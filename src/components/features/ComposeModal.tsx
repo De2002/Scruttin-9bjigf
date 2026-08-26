@@ -171,11 +171,11 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
-        <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
         <div
-          className="relative glass rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md overflow-y-auto"
-          style={{ maxHeight: '90vh', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}
+          className="relative glass max-h-[calc(100dvh-0.5rem)] w-full overflow-y-auto overscroll-contain rounded-t-3xl sm:max-w-md sm:rounded-3xl"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}
         >
           <div className="p-5">
             {/* Header */}

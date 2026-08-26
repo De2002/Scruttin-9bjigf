@@ -93,29 +93,24 @@ export default function OpenPage() {
 
       {/* Animated scrut content */}
       <div key={scrut.id} className={cn('w-full max-w-sm px-7 z-10', contentAnim)}>
-        {/* User identity — circular on Open page */}
-        <div className="flex items-end gap-3 mb-6">
-          {/* Only text scruts → avatar tap opens profile sheet; voice → no tap */}
-          {scrut.type !== 'voice' ? (
-            <div
-              className="cursor-pointer transition-opacity hover:opacity-80 active:opacity-60"
+        {/* Text Scruts keep the tappable identity row; voice identity lives in the player. */}
+        {scrut.type !== 'voice' && (
+          <div className="mb-6 flex items-end gap-3">
+            <button
+              type="button"
+              aria-label={`View ${scrut.user.display_name} profile`}
+              className="pointer-events-auto cursor-pointer rounded-full transition-opacity hover:opacity-80 active:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
               onClick={e => { e.stopPropagation(); setDetailScrut(scrut); }}
               onTouchEnd={e => { e.stopPropagation(); setDetailScrut(scrut); }}
             >
               <UserAvatar user={scrut.user} size="lg" shape="circle" />
+            </button>
+            <div className="pb-0.5">
+              <p className="text-white font-semibold text-[15px] leading-tight">{scrut.user.display_name}</p>
+              {(scrut.user.city || scrut.user.country) && <p className="mt-0.5 text-xs text-white/35">{scrut.user.city ? `${scrut.user.city}, ${scrut.user.country}` : scrut.user.country}</p>}
             </div>
-          ) : (
-            <UserAvatar user={scrut.user} size="lg" shape="circle" />
-          )}
-          <div className="pb-0.5">
-            <p className="text-white font-semibold text-[15px] leading-tight">{scrut.user.display_name}</p>
-            {(scrut.user.city || scrut.user.country) && (
-              <p className="text-white/35 text-xs mt-0.5">
-                {scrut.user.city ? `${scrut.user.city}, ${scrut.user.country}` : scrut.user.country}
-              </p>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Text scrut */}
         {(scrut.type === 'text' || scrut.type === 'voice_text') && scrut.text && (
