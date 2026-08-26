@@ -20,11 +20,11 @@ export default function AtmosphereControls() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative glass max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:p-6">
+          <div role="dialog" aria-modal="true" aria-labelledby="atmosphere-title" className="relative glass max-h-[calc(100dvh-1rem)] w-full overflow-y-auto rounded-t-3xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:max-w-sm sm:rounded-3xl sm:p-6 p-5">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-white font-semibold text-base">Atmosphere</h3>
+              <h3 id="atmosphere-title" className="text-white font-semibold text-base">Atmosphere</h3>
               <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white transition-colors p-1">
                 <X size={18} />
               </button>

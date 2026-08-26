@@ -269,8 +269,6 @@ export default function StreamPage() {
         </span>
       </div>
 
-      <div className="mx-5 border-t border-white/6 shrink-0" />
-
       {/* Swipe zone */}
       <div className="flex-1 relative overflow-hidden">
         {loadingStream ? (
