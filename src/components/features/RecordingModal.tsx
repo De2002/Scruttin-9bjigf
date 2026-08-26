@@ -79,7 +79,7 @@ export default function RecordingModal({ onRecorded, onCancel }: Props) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onCancel} />
       <div
         className="relative w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 pb-10 sm:pb-6"
