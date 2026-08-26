@@ -69,6 +69,7 @@ export default function App() {
             <Route path="/dive/crowd" element={<AppShell><FromTheCrowdPage /></AppShell>} />
             <Route path="/dive/statements" element={<AppShell><StatementsPage /></AppShell>} />
             <Route path="/conversation/:id" element={<AppShell><ConversationPage /></AppShell>} />
+            <Route path="/questions/:id" element={<AppShell><ConversationPage /></AppShell>} />
             <Route path="/open" element={<AppShell><OpenPage /></AppShell>} />
 
             {/* Auth required */}
