@@ -49,11 +49,13 @@ export default function ReportModal({ scrutId, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-[300] flex items-end justify-center p-0 sm:items-center sm:p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative max-h-[calc(100dvh-1rem)] w-full overflow-y-auto overscroll-contain rounded-t-3xl sm:max-w-sm sm:rounded-3xl"
-        style={{ background: 'rgba(14,14,22,0.98)', border: '1px solid rgba(255,255,255,0.08)' }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="report-title"
+        className="relative max-h-[min(88dvh,31rem)] w-full overflow-y-auto overscroll-contain rounded-t-[1.75rem] border border-white/15 bg-[#101017] pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:max-w-sm sm:rounded-3xl"
       >
         {done ? (
           <div className="p-8 text-center">
@@ -62,24 +64,25 @@ export default function ReportModal({ scrutId, onClose }: Props) {
             <p className="text-white/40 text-sm">Our team will review this scrut.</p>
           </div>
         ) : (
-          <div className="p-5 pb-10 sm:pb-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-white font-semibold">Report this scrut</h3>
-              <button onClick={onClose} className="text-white/30 hover:text-white p-1 transition-colors">
+          <div className="p-4 sm:p-5">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
+            <div className="mb-4 flex items-center justify-between">
+              <h3 id="report-title" className="text-base font-semibold text-white">Report this Scrut</h3>
+              <button type="button" aria-label="Close report dialog" onClick={onClose} className="rounded-full p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
                 <X size={18} />
               </button>
             </div>
-            <p className="text-white/40 text-sm mb-4">Why are you reporting this?</p>
-            <div className="space-y-1.5 mb-5">
+            <p className="mb-3 text-sm text-white/60">Why are you reporting this?</p>
+            <div className="mb-4 grid gap-2">
               {REASONS.map(r => (
                 <button
                   key={r}
                   onClick={() => setReason(r)}
                   className={cn(
-                    'w-full text-left px-4 py-2.5 rounded-xl border text-sm transition-all',
+                    'w-full min-h-11 rounded-xl border px-4 py-2.5 text-left text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70',
                     reason === r
-                      ? 'bg-rose-500/15 border-rose-500/40 text-rose-300'
-                      : 'bg-white/4 border-white/8 text-white/60 hover:bg-white/8'
+                      ? 'border-rose-400/60 bg-rose-500/20 text-white'
+                      : 'border-white/15 bg-white/[0.06] text-white/80 hover:bg-white/10'
                   )}
                 >
                   {r}
@@ -90,10 +93,10 @@ export default function ReportModal({ scrutId, onClose }: Props) {
               onClick={submit}
               disabled={!reason || submitting || !user}
               className={cn(
-                'w-full py-3 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all',
+                'w-full min-h-12 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70',
                 reason && user && !submitting
-                  ? 'bg-rose-500 text-white hover:bg-rose-400'
-                  : 'bg-white/8 text-white/25 cursor-not-allowed'
+                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-950/40 hover:bg-rose-400'
+                  : 'cursor-not-allowed bg-white/10 text-white/40'
               )}
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : 'Submit report'}
