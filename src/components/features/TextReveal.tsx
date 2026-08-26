@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { usePreferences } from '@/stores/preferencesStore';
 import { cn } from '@/lib/utils';
 
@@ -9,14 +9,14 @@ interface Props {
   style?: React.CSSProperties;
 }
 
-// Speed map
+// Average delay between characters. The normal setting is deliberately calm,
+// so text reads like a person typing rather than a loading animation.
 const SPEED_MAP: Record<string, number> = {
-  slow: 140,
-  normal: 80,
-  fast: 40,
+  slow: 85,
+  normal: 48,
+  fast: 24,
   instant: 0,
 };
-const CHUNK_SIZE = 3; // words per tick
 
 // Singleton audio manager so the same sound doesn't overlap itself
 let typingAudio: HTMLAudioElement | null = null;
@@ -52,25 +52,25 @@ function stopTypingSound() {
 
 export default function TextReveal({ text, onComplete, className, style }: Props) {
   const { reducedMotion, typingSpeed } = usePreferences();
-  const words = text.split(' ');
-  const [visibleCount, setVisibleCount] = useState(reducedMotion ? words.length : 0);
+  const characters = useMemo(() => Array.from(text), [text]);
+  const [visibleCount, setVisibleCount] = useState(reducedMotion ? characters.length : 0);
   const [complete, setComplete] = useState(reducedMotion);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const interval = SPEED_MAP[typingSpeed ?? 'normal'] ?? 80;
+  const interval = SPEED_MAP[typingSpeed ?? 'normal'] ?? SPEED_MAP.normal;
 
   const revealAll = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     stopTypingSound();
-    setVisibleCount(words.length);
+    setVisibleCount(characters.length);
     setComplete(true);
     onComplete?.();
-  }, [words.length, onComplete]);
+  }, [characters.length, onComplete]);
 
   useEffect(() => {
     if (reducedMotion || interval === 0) {
       stopTypingSound();
-      setVisibleCount(words.length);
+      setVisibleCount(characters.length);
       setComplete(true);
       onComplete?.();
       return;
@@ -79,33 +79,40 @@ export default function TextReveal({ text, onComplete, className, style }: Props
     setVisibleCount(0);
     setComplete(false);
 
-    const startTimer = setTimeout(() => {
-      intervalRef.current = setInterval(() => {
-        setVisibleCount(prev => {
-          const next = prev + CHUNK_SIZE;
-          // Play tick sound while typing
-          playTypingTick();
-          if (next >= words.length) {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            stopTypingSound();
-            setComplete(true);
-            onComplete?.();
-            return words.length;
-          }
-          return next;
-        });
-      }, interval);
-    }, 200);
+    let cancelled = false;
+    const typeNextCharacter = (currentCount: number) => {
+      if (cancelled) return;
+      const nextCount = currentCount + 1;
+      setVisibleCount(nextCount);
+      if (characters[currentCount] !== ' ') playTypingTick();
+
+      if (nextCount >= characters.length) {
+        stopTypingSound();
+        setComplete(true);
+        onComplete?.();
+        return;
+      }
+
+      const previousCharacter = characters[currentCount];
+      const punctuationPause = /[,.!?;:]/.test(previousCharacter) ? interval * 3 : 0;
+      timeoutRef.current = setTimeout(
+        () => typeNextCharacter(nextCount),
+        interval + punctuationPause,
+      );
+    };
+
+    const startTimer = setTimeout(() => typeNextCharacter(0), 200);
 
     return () => {
+      cancelled = true;
       clearTimeout(startTimer);
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       stopTypingSound();
     };
-  }, [text, reducedMotion, interval]);
+  }, [text, reducedMotion, interval, characters]);
 
-  const visibleWords = words.slice(0, visibleCount);
-  const hiddenWords = words.slice(visibleCount);
+  const visibleText = characters.slice(0, visibleCount).join('');
+  const hiddenText = characters.slice(visibleCount).join('');
 
   return (
     <p
@@ -114,12 +121,12 @@ export default function TextReveal({ text, onComplete, className, style }: Props
       onClick={complete ? undefined : revealAll}
       title={complete ? undefined : 'Tap to show full text'}
     >
-      <span>{visibleWords.join(' ')}</span>
+      <span>{visibleText}</span>
       {!complete && visibleCount > 0 && (
         <span className="inline-block w-0.5 h-[1em] bg-white/70 ml-0.5 align-middle cursor-blink" />
       )}
       {!complete && (
-        <span className="invisible select-none">{' ' + hiddenWords.join(' ')}</span>
+        <span className="invisible select-none">{hiddenText}</span>
       )}
     </p>
   );
