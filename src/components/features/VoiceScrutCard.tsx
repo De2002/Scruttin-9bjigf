@@ -4,11 +4,12 @@ import { formatDuration, cn } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
 import type { User } from '@/types';
 
-interface Props { duration: number; user: User; audioUrl?: string; className?: string; autoPlay?: boolean; onPlaybackEnd?: () => void; onPlaybackStart?: () => void; showUser?: boolean; }
+interface Props { duration: number; user: User; scrutId?: string; audioUrl?: string; className?: string; autoPlay?: boolean; onPlaybackEnd?: () => void; onPlaybackStart?: () => void; showUser?: boolean; }
 
 const BAR_HEIGHTS = [18, 28, 42, 25, 34, 50, 30, 44, 22, 38, 55, 31, 47, 26, 40, 20, 35, 52, 29, 43, 24, 37, 49, 27, 41, 19, 33, 46, 23, 39, 30, 48, 26, 36, 21, 32];
+const COUNTRY_ISO: Record<string, string> = { Nigeria:'ng', Brazil:'br', Ghana:'gh', Japan:'jp', India:'in', Mexico:'mx', Germany:'de', USA:'us', Canada:'ca', Australia:'au', Kenya:'ke', France:'fr', Spain:'es', Italy:'it', UK:'gb' };
 
-export default function VoiceScrutCard({ duration, user, audioUrl, className, autoPlay = false, onPlaybackEnd, onPlaybackStart, showUser = true }: Props) {
+export default function VoiceScrutCard({ duration, user, scrutId, audioUrl, className, autoPlay = false, onPlaybackEnd, onPlaybackStart, showUser = true }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -17,6 +18,7 @@ export default function VoiceScrutCard({ duration, user, audioUrl, className, au
   const total = mediaDuration || duration || 1;
   const progress = Math.min(1, currentTime / total);
   const location = [user.city, user.country].filter(Boolean).join(', ');
+  const mapUrl = user.country && COUNTRY_ISO[user.country] ? `https://raw.githubusercontent.com/djaiss/mapsicon/master/all/${COUNTRY_ISO[user.country]}/256.png` : null;
   const bars = useMemo(() => BAR_HEIGHTS, []);
 
   const startPlay = async () => {
@@ -41,9 +43,10 @@ export default function VoiceScrutCard({ duration, user, audioUrl, className, au
   useEffect(() => { if (autoPlay && !autoplayed) { setAutoplayed(true); const timer = window.setTimeout(() => void startPlay(), 250); return () => window.clearTimeout(timer); } }, [autoPlay, autoplayed]);
 
   return <div className={cn('flex flex-col gap-4', className)}>
+    {mapUrl && <div className="flex flex-col items-center gap-1.5"><img src={mapUrl} alt={`${user.country} map`} className="h-14 w-14 object-contain opacity-70" /><span className="text-[10px] uppercase tracking-[0.14em] text-white/30">{location || user.country}</span></div>}
     {audioUrl && <audio ref={audioRef} src={audioUrl} preload="metadata" />}
     <div className="flex items-center gap-4">
-      <button type="button" onClick={togglePlay} aria-label={playing ? 'Pause voice Scrut' : 'Play voice Scrut'} className={cn('relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70', playing ? 'border-white/45 bg-white/15' : 'border-white/15 bg-white/7 hover:bg-white/12')}>
+      <button type="button" onClick={togglePlay} aria-label={playing ? 'Pause voice Scrut' : 'Play voice Scrut'} className={cn('pulse-ring relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70', playing ? 'border-white/45 bg-white/15' : 'border-white/15 bg-white/7 hover:bg-white/12')}>
         {showUser ? <UserAvatar user={user} size="lg" shape="circle" /> : (playing ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />)}
         <span className="absolute inset-0 flex items-center justify-center bg-black/15">{playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}</span>
       </button>

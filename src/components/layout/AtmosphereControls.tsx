@@ -22,7 +22,7 @@ export default function AtmosphereControls() {
       {open && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative glass rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-6 pb-10 sm:pb-6">
+          <div className="relative glass max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:p-6">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-white font-semibold text-base">Atmosphere</h3>
               <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white transition-colors p-1">
