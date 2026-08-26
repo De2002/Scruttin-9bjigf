@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 
 interface Props {
   scrutId: string;
@@ -49,13 +50,10 @@ export default function ReportModal({ scrutId, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end justify-center p-0 sm:items-center sm:p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="report-title"
-        className="relative max-h-[min(88dvh,31rem)] w-full overflow-y-auto overscroll-contain rounded-t-[1.75rem] border border-white/15 bg-[#101017] pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:max-w-sm sm:rounded-3xl"
+    <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent
+        side="bottom"
+        className="z-[301] max-h-[min(88dvh,31rem)] w-full overflow-y-auto overscroll-contain rounded-t-[1.75rem] border-white/15 bg-[#101017] p-0 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:mx-auto sm:max-w-sm sm:rounded-3xl"
       >
         {done ? (
           <div className="p-8 text-center">
@@ -67,7 +65,7 @@ export default function ReportModal({ scrutId, onClose }: Props) {
           <div className="p-4 sm:p-5">
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
             <div className="mb-4 flex items-center justify-between">
-              <h3 id="report-title" className="text-base font-semibold text-white">Report this Scrut</h3>
+              <SheetTitle id="report-title" className="text-base font-semibold text-white">Report this Scrut</SheetTitle>
               <button type="button" aria-label="Close report dialog" onClick={onClose} className="rounded-full p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
                 <X size={18} />
               </button>
@@ -106,7 +104,7 @@ export default function ReportModal({ scrutId, onClose }: Props) {
             )}
           </div>
         )}
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
