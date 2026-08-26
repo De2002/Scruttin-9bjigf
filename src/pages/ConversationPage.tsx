@@ -1,0 +1,275 @@
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Globe, Pin, Mic2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { cn, formatCount } from '@/lib/utils';
+import { useStream } from '@/stores/streamContext';
+import { usePreferences } from '@/stores/preferencesStore';
+import ScrutCard from '@/components/features/ScrutCard';
+import ScrutDetailSheet from '@/components/features/ScrutDetailSheet';
+import StatementVote from '@/components/features/StatementVote';
+import ComposeModal from '@/components/features/ComposeModal';
+import AtmosphereControls from '@/components/layout/AtmosphereControls';
+import type { ConversationStarter, Scrut } from '@/types';
+
+const SWIPE_THRESHOLD = 52;
+type Phase = 'idle' | 'exiting' | 'entering';
+
+function mapUser(profile: Record<string, unknown>) {
+  return {
+    id: (profile.id as string) ?? '',
+    display_name: (profile.display_name as string) ?? 'Anonymous',
+    avatar_url: (profile.avatar_url as string) ?? '',
+    country: (profile.country as string) ?? '',
+    city: profile.city as string | undefined,
+    bio: profile.bio as string | undefined,
+    website: profile.website as string | undefined,
+    twitter: profile.twitter as string | undefined,
+    instagram: profile.instagram as string | undefined,
+  };
+}
+
+export default function ConversationPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [detailScrut, setDetailScrut] = useState<Scrut | null>(null);
+  const [conversation, setConversation] = useState<ConversationStarter | null>(null);
+  const [scruts, setScruts] = useState<Scrut[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { pinned, togglePin } = useStream();
+  const { autoPlayVoice } = usePreferences();
+
+  const advancing = useRef(false);
+  const touchStartY = useRef(0);
+  const mouseStartY = useRef(0);
+  const isDragging = useRef(false);
+  const hasMoved = useRef(false);
+
+  // Track the currently active scrut's id to force re-mount on advance (for autoplay)
+  const currentScrutId = scruts[index]?.id;
+
+  const loadData = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+
+    const { data: conv } = await supabase
+      .from('conversations')
+      .select('*, user:user_id(id, display_name, avatar_url, country, city, bio, website, twitter, instagram)')
+      .eq('id', id)
+      .single();
+
+    if (conv) {
+      setConversation({
+        id: conv.id,
+        user_id: conv.user_id,
+        user: conv.user ? mapUser(conv.user as Record<string, unknown>) : { id: '', display_name: 'Scruttin', avatar_url: '', country: '' },
+        type: conv.type,
+        body: conv.body,
+        topic: conv.topic ?? '',
+        created_at: conv.created_at,
+        scrut_count: conv.scrut_count ?? 0,
+        country_count: conv.country_count ?? 0,
+        is_platform: conv.is_platform,
+        circulation_score: 0,
+      });
+    }
+
+    const { data: scrutData } = await supabase
+      .from('scruts')
+      .select('*, user:user_id(id, display_name, avatar_url, country, city, bio, website, twitter, instagram)')
+      .eq('conversation_id', id)
+      .eq('is_reported', false)
+      .order('created_at', { ascending: true });
+
+    setScruts(
+      (scrutData ?? []).map((s: Record<string, unknown>) => ({
+        id: s.id as string,
+        user: mapUser(s.user as Record<string, unknown>),
+        conversation_id: s.conversation_id as string,
+        type: s.type as 'text' | 'voice',
+        text: s.text as string | undefined,
+        audio_url: s.audio_url as string | undefined,
+        audio_duration: s.audio_duration as number | undefined,
+        position: s.position as 'agree' | 'unsure' | 'disagree' | null,
+        resonate_count: (s.resonate_count as number) ?? 0,
+        resonated_by_me: false,
+        created_at: s.created_at as string,
+      }))
+    );
+
+    setLoading(false);
+  }, [id]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const isPinned = pinned.includes(conversation?.id ?? '');
+  const scrut = scruts[index];
+
+  const advance = useCallback(() => {
+    if (advancing.current || scruts.length <= 1) return;
+    advancing.current = true;
+    setPhase('exiting');
+    setTimeout(() => {
+      setIndex(prev => (prev + 1) % scruts.length);
+      setPhase('entering');
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setPhase('idle');
+          advancing.current = false;
+        });
+      });
+    }, 380);
+  }, [scruts.length]);
+
+  const onTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; hasMoved.current = false; };
+  const onTouchMove = (e: React.TouchEvent) => { if (Math.abs(e.touches[0].clientY - touchStartY.current) > 8) hasMoved.current = true; };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (dy < -SWIPE_THRESHOLD) advance();
+  };
+  const onMouseDown = (e: React.MouseEvent) => { mouseStartY.current = e.clientY; isDragging.current = true; hasMoved.current = false; };
+  const onMouseMove = (e: React.MouseEvent) => { if (!isDragging.current) return; if (Math.abs(e.clientY - mouseStartY.current) > 8) hasMoved.current = true; };
+  const onMouseUp = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const dy = e.clientY - mouseStartY.current;
+    if (dy < -SWIPE_THRESHOLD) advance();
+  };
+
+  if (loading || !conversation) {
+    return (
+      <div className="flex items-center justify-center h-screen text-white/40">
+        {loading ? (
+          <img src="/favicon.png" alt="" className="w-8 h-8 opacity-30 animate-pulse" />
+        ) : (
+          <button onClick={() => navigate(-1)} className="text-white/60 hover:text-white flex items-center gap-2">
+            <ArrowLeft size={16} /> Back
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const contentAnim = cn(
+    phase === 'exiting' && 'scrut-exit-up',
+    phase === 'entering' && 'scrut-enter-below',
+    phase === 'idle' && 'opacity-100 translate-y-0',
+  );
+
+  return (
+    <div className="fixed inset-0 flex flex-col overflow-hidden pb-16">
+      {/* Question strip */}
+      <div className="shrink-0 z-30 relative">
+        <div className="flex items-center justify-between px-4 pt-safe pt-3 pb-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 text-white/40 hover:text-white/80 transition-colors text-sm"
+            onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
+          >
+            <ArrowLeft size={15} /><span className="text-xs">Back</span>
+          </button>
+          <div className="flex items-center gap-2" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+            <AtmosphereControls />
+            <button
+              onClick={() => togglePin(conversation.id)}
+              className={cn(
+                'flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border transition-all',
+                isPinned ? 'text-amber-300 border-amber-400/40 bg-amber-400/10' : 'text-white/25 border-white/10 hover:text-white/50'
+              )}
+            >
+              <Pin size={10} fill={isPinned ? 'currentColor' : 'none'} />
+              {isPinned ? 'Pinned' : 'Pin'}
+            </button>
+          </div>
+        </div>
+
+        <div className="px-5 pb-3">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/30 mb-1.5">
+            {conversation.is_platform
+              ? `Scruttin Asks · ${conversation.topic}`
+              : `${conversation.topic} · ${conversation.user.display_name}`}
+          </p>
+          <p className={cn('font-serif text-white/90 leading-[1.45]', conversation.type === 'statement' ? 'italic text-[15px]' : 'text-[15px]')}>
+            {conversation.type === 'statement' ? `"${conversation.body}"` : conversation.body}
+          </p>
+          {conversation.type === 'statement' && <div className="mt-2"><StatementVote compact /></div>}
+          <div className="flex items-center gap-3 mt-2 text-white/25 text-[10px]">
+            <span className="flex items-center gap-1"><Mic2 size={10} />{formatCount(conversation.scrut_count)} scruts</span>
+            <span className="flex items-center gap-1"><Globe size={10} />{conversation.country_count} countries</span>
+            <span className="ml-auto">{scruts.length > 0 ? `${index + 1} / ${scruts.length}` : '—'}</span>
+          </div>
+        </div>
+        <div className="mx-5 border-t border-white/10" />
+      </div>
+
+      {/* Scrut zone */}
+      <div
+        className="flex-1 relative overflow-hidden"
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp}
+        style={{ userSelect: 'none', cursor: 'default' }}
+      >
+        {scruts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-white/30 pb-8">
+            <p className="text-3xl mb-3">🎙</p>
+            <p className="font-medium mb-1 text-white/50">No scruts yet</p>
+            <p className="text-sm">Be the first to answer</p>
+          </div>
+        ) : (
+          <div key={currentScrutId} className={cn('absolute inset-0 flex flex-col justify-center px-5 pb-6', contentAnim)}>
+            {scrut && (
+              <ScrutCard
+                scrut={scrut}
+                showPosition={conversation.type === 'statement'}
+                onAvatarClick={(s) => setDetailScrut(s)}
+                autoPlayVoice={autoPlayVoice}
+              />
+            )}
+            {scruts.length > 1 && (
+              <div className="mt-6 flex items-center justify-center gap-1 text-white/20 text-[11px] pointer-events-none select-none">
+                <span>↑</span><span className="tracking-wide">swipe for next</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {scruts.length > 1 && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none z-10">
+            {scruts.map((_, i) => (
+              <span key={i} className={cn('rounded-full transition-all duration-300', i === index ? 'w-4 h-1 bg-white/50' : 'w-1 h-1 bg-white/15')} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Give your take — stays above bottom nav */}
+      <div
+        className="shrink-0 z-30 px-5 py-3 border-t border-white/8"
+        onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
+      >
+        <button
+          onClick={() => setComposeOpen(true)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl glass border border-white/8 text-white/60 hover:text-white hover:bg-white/10 transition-all text-sm font-semibold"
+        >
+          {conversation.type === 'statement' ? 'Scrut your response' : 'Scrut your answer'}
+        </button>
+      </div>
+
+      {composeOpen && (
+        <ComposeModal
+          onClose={() => setComposeOpen(false)}
+          defaultMode={conversation.type === 'statement' ? 'statement' : 'question'}
+          contextConversation={conversation}
+          onPosted={() => { setTimeout(() => loadData(), 400); }}
+        />
+      )}
+
+      {detailScrut && (
+        <ScrutDetailSheet scrut={detailScrut} onClose={() => setDetailScrut(null)} />
+      )}
+    </div>
+  );
+}

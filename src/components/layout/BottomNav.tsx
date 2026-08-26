@@ -1,0 +1,76 @@
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Mic2, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+// Wavy icon for Dive
+function WavesIcon({ size = 20, strokeWidth = 1.6 }: { size?: number; strokeWidth?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round">
+      <path d="M2 8 Q6 5 10 8 Q14 11 18 8 Q20.5 6.5 22 8" />
+      <path d="M2 12 Q6 9 10 12 Q14 15 18 12 Q20.5 10.5 22 12" />
+      <path d="M2 16 Q6 13 10 16 Q14 19 18 16 Q20.5 14.5 22 16" />
+    </svg>
+  );
+}
+
+// S logo icon (favicon) for Stream tab
+function SLogoIcon({ size = 20, active = false }: { size?: number; active?: boolean }) {
+  return (
+    <img
+      src="/favicon.png"
+      alt="Stream"
+      width={size}
+      height={size}
+      className={cn('object-contain transition-opacity', active ? 'opacity-90' : 'opacity-40')}
+      style={{ filter: 'brightness(0) invert(1)' }}
+    />
+  );
+}
+
+const NAV_ITEMS = [
+  { path: '/stream', label: 'Stream', icon: 'slogo' },
+  { path: '/dive', label: 'Dive', icon: 'waves' },
+  { path: '/open', label: 'Open', icon: 'mic' },
+  { path: '/me', label: 'Me', icon: 'user' },
+];
+
+export default function BottomNav() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 safe-area-pb">
+      <div className="glass border-t border-white/5 px-2 py-2">
+        <div className="flex items-center justify-around max-w-lg mx-auto">
+          {NAV_ITEMS.map(({ path, label, icon }) => {
+            const active = pathname === path || (path !== '/stream' && pathname.startsWith(path));
+            const sw = active ? 2.2 : 1.6;
+            return (
+              <button
+                key={path}
+                onClick={() => navigate(path)}
+                className={cn(
+                  'flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200 min-w-[64px]',
+                  active ? 'text-white' : 'text-white/40 hover:text-white/70'
+                )}
+              >
+                <span className={cn('transition-all duration-200', active && 'drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]')}>
+                  {icon === 'slogo' && <SLogoIcon size={20} active={active} />}
+                  {icon === 'waves' && <WavesIcon size={20} strokeWidth={sw} />}
+                  {icon === 'mic' && <Mic2 size={20} strokeWidth={sw} />}
+                  {icon === 'user' && <User size={20} strokeWidth={sw} />}
+                </span>
+                <span className={cn('text-[10px] font-medium tracking-wide transition-all', active ? 'opacity-100' : 'opacity-60')}>
+                  {label}
+                </span>
+                {active && (
+                  <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-white opacity-80" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </nav>
+  );
+}

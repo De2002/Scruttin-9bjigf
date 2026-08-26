@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --scruttin-base: 12 12 18;
+    --scruttin-surface: 20 20 30;
+    --scruttin-border: 255 255 255;
+    --scruttin-text: 240 240 245;
+    --scruttin-muted: 160 165 180;
+    --scruttin-accent: 168 85 247;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: rgb(var(--scruttin-base));
+    color: rgb(var(--scruttin-text));
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  /* Global dark inputs — prevent browser light default */
+  input, textarea, select {
+    color-scheme: dark;
+    background-color: rgba(255, 255, 255, 0.07);
+    color: white;
+  }
+  input::placeholder, textarea::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+  }
+  /* Exceptions: buttons and range inputs */
+  input[type=range], input[type=file], input[type=checkbox], input[type=radio], button {
+    background-color: transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  .font-serif {
+    font-family: 'Lora', serif;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .glass {
+    background: rgba(20, 20, 32, 0.72);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .glass-light {
+    background: rgba(30, 30, 46, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .scrut-enter {
+    animation: scrutEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes scrutEnter {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .pulse-ring {
+    animation: pulseRing 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseRing {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.04); }
+  }
+
+  .waveform-bar {
+    animation: waveBar 1.2s ease-in-out infinite;
+  }
+
+  @keyframes waveBar {
+    0%, 100% { transform: scaleY(0.4); }
+    50% { transform: scaleY(1); }
+  }
+
+  .cursor-blink {
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* Smooth fade for ambient transitions */
+  .ambient-fade {
+    transition: opacity 1.2s ease;
+  }
+
+  /* Open page — scrut swipe transitions */
+  .scrut-exit-up {
+    animation: scrutExitUp 0.38s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  }
+
+  @keyframes scrutExitUp {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-48px);
+    }
+  }
+
+  .scrut-enter-below {
+    animation: scrutEnterBelow 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes scrutEnterBelow {
+    from {
+      opacity: 0;
+      transform: translateY(56px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Double-tap heart flash */
+  @keyframes heartFlash {
+    0%   { opacity: 0; transform: scale(0.4); }
+    25%  { opacity: 1; transform: scale(1.25); }
+    55%  { opacity: 1; transform: scale(1.0); }
+    100% { opacity: 0; transform: scale(0.85); }
+  }
+
+  /* Tutorial bob */
+  @keyframes tutorialBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrut-enter, .scrut-exit-up, .scrut-enter-below,
+  .pulse-ring, .waveform-bar, .cursor-blink {
+    animation: none !important;
+  }
+  .ambient-fade {
+    transition: none !important;
+  }
+}
