@@ -39,9 +39,9 @@ export default function BottomNav() {
   const { pathname } = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 safe-area-pb">
-      <div className="glass border-t border-white/5 px-2 py-2">
-        <div className="flex items-center justify-around max-w-lg mx-auto">
+    <nav aria-label="Primary navigation" className="fixed bottom-0 left-0 right-0 z-50 safe-area-pb px-3 pb-2 sm:px-5">
+      <div className="mx-auto max-w-lg rounded-[1.35rem] border border-white/10 bg-black/65 p-1.5 shadow-[0_-10px_35px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
+        <div className="flex items-center justify-around">
           {NAV_ITEMS.map(({ path, label, icon }) => {
             const active = pathname === path || (path !== '/stream' && pathname.startsWith(path));
             const sw = active ? 2.2 : 1.6;
@@ -50,8 +50,8 @@ export default function BottomNav() {
                 key={path}
                 onClick={() => navigate(path)}
                 className={cn(
-                  'flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200 min-w-[64px]',
-                  active ? 'text-white' : 'text-white/40 hover:text-white/70'
+                  'relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60',
+                  active ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white/75'
                 )}
               >
                 <span className={cn('transition-all duration-200', active && 'drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]')}>
