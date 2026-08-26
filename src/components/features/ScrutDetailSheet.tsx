@@ -102,7 +102,7 @@ export default function ScrutDetailSheet({ scrut, onClose }: Props) {
     /* Backdrop */
     <div
       className={cn(
-        'fixed inset-0 z-[100] flex items-end',
+        'fixed inset-0 z-[1000] flex items-end',
         'transition-all duration-300',
         mounted && !closing ? 'bg-black/55' : 'bg-black/0'
       )}

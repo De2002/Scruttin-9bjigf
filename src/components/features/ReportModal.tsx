@@ -53,7 +53,7 @@ export default function ReportModal({ scrutId, onClose }: Props) {
     <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent
         side="bottom"
-        className="z-[301] max-h-[min(88dvh,31rem)] w-full overflow-y-auto overscroll-contain rounded-t-[1.75rem] border-white/15 bg-[#101017] p-0 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:mx-auto sm:max-w-sm sm:rounded-3xl"
+        className="z-[1001] max-h-[min(88dvh,31rem)] w-full overflow-y-auto overscroll-contain rounded-t-[1.75rem] border-white/15 bg-[#101017] p-0 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:mx-auto sm:max-w-sm sm:rounded-3xl"
       >
         {done ? (
           <div className="p-8 text-center">

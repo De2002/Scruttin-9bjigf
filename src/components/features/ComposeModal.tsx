@@ -132,7 +132,7 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
 
   if (!user) {
     return (
-      <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center">
+      <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center">
         <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
         <div className="relative glass rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-6 pb-10 sm:pb-6 text-center">
           <div className="text-3xl mb-4">🎙</div>
@@ -171,7 +171,7 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
 
   return (
     <>
-      <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
         <div
           className="relative glass max-h-[calc(100dvh-0.5rem)] w-full overflow-y-auto overscroll-contain rounded-t-3xl sm:max-w-md sm:rounded-3xl"
