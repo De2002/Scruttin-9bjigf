@@ -49,10 +49,10 @@ export default function ReportModal({ scrutId, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden"
+        className="relative max-h-[calc(100dvh-1rem)] w-full overflow-y-auto overscroll-contain rounded-t-3xl sm:max-w-sm sm:rounded-3xl"
         style={{ background: 'rgba(14,14,22,0.98)', border: '1px solid rgba(255,255,255,0.08)' }}
       >
         {done ? (
