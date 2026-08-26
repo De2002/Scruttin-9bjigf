@@ -176,9 +176,10 @@ export default function FromTheCrowdPage() {
       <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-4">
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 size={20} className="text-white/20 animate-spin" /></div>
-        ) : items.length > 0 ? items.map(c => (
+        ) : items.length > 0 ? items.map((c, i) => (
           <button key={c.id} onClick={() => navigate(`/conversation/${c.id}`)}
-            className="w-full text-left p-4 rounded-2xl bg-white/4 border border-white/7 hover:bg-white/8 hover:border-white/14 transition-all group">
+            style={{ animationDelay: `${Math.min(i * 70, 420)}ms` }}
+            className="scrut-enter w-full text-left p-4 rounded-2xl bg-white/4 border border-white/7 hover:bg-white/8 hover:border-white/14 transition-all group">
             <div className="flex items-center gap-2 mb-2">
               {c.user.avatar_url ? (
                 <img src={c.user.avatar_url} alt={c.user.display_name} className="w-5 h-5 rounded-full object-cover opacity-70" />

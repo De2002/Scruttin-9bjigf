@@ -32,8 +32,10 @@ export function setTypingSoundEnabled(enabled: boolean) {
 
 function playTypingTick() {
   if (!typingSoundEnabled || !typingSoundUrl) return;
-  if (!typingAudio) {
+  if (!typingAudio || typingAudio.src !== new URL(typingSoundUrl, window.location.href).href) {
+    typingAudio?.pause();
     typingAudio = new Audio(typingSoundUrl);
+    typingAudio.preload = 'auto';
     typingAudio.volume = 0.25;
   }
   // Only replay if not already playing (avoids overlap)

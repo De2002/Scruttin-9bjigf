@@ -108,13 +108,14 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
 
         {/* Floating avatar — tap opens profile sheet */}
         <div className="float-left mr-3 mb-2 flex flex-col items-center relative" style={{ width: floatWidth, zIndex: 1 }}>
-          <div
+          <button
+            type="button"
+            aria-label={`View ${scrut.user.display_name ?? 'user'} profile`}
             onClick={(e) => { e.stopPropagation(); onAvatarClick?.(scrut); }}
-            onTouchEnd={(e) => { e.stopPropagation(); onAvatarClick?.(scrut); }}
-            className="cursor-pointer transition-opacity hover:opacity-80 active:opacity-60"
+            className="cursor-pointer rounded-xl transition-opacity hover:opacity-80 active:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
           >
             <UserAvatar user={scrut.user} size={isShort ? 'xl' : 'md'} shape="square" />
-          </div>
+          </button>
           <p className="text-white/65 font-medium text-center mt-1.5 leading-tight w-full truncate px-0.5" style={{ fontSize: isShort ? 11 : 10 }}>
             {scrut.user.display_name?.split(' ')[0] ?? '?'}
           </p>
