@@ -66,6 +66,7 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
         <VoiceScrutCard
           duration={scrut.audio_duration ?? 30}
           user={scrut.user}
+          scrutId={scrut.id}
           audioUrl={scrut.audio_url}
           autoPlay={autoPlayVoice}
           showUser

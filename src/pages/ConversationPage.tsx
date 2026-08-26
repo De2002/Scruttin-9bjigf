@@ -128,7 +128,8 @@ export default function ConversationPage() {
   const onTouchMove = (e: React.TouchEvent) => { if (Math.abs(e.touches[0].clientY - touchStartY.current) > 8) hasMoved.current = true; };
   const onTouchEnd = (e: React.TouchEvent) => {
     const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (dy < -SWIPE_THRESHOLD) advance();
+    if (!hasMoved.current || dy >= -SWIPE_THRESHOLD) return;
+    advance();
   };
   const onMouseDown = (e: React.MouseEvent) => { mouseStartY.current = e.clientY; isDragging.current = true; hasMoved.current = false; };
   const onMouseMove = (e: React.MouseEvent) => { if (!isDragging.current) return; if (Math.abs(e.clientY - mouseStartY.current) > 8) hasMoved.current = true; };
@@ -136,7 +137,8 @@ export default function ConversationPage() {
     if (!isDragging.current) return;
     isDragging.current = false;
     const dy = e.clientY - mouseStartY.current;
-    if (dy < -SWIPE_THRESHOLD) advance();
+    if (!hasMoved.current || dy >= -SWIPE_THRESHOLD) return;
+    advance();
   };
 
   if (loading || !conversation) {
@@ -245,18 +247,17 @@ export default function ConversationPage() {
         )}
       </div>
 
-      {/* Give your take — stays above bottom nav */}
-      <div
-        className="shrink-0 z-30 px-5 py-3 border-t border-white/8"
-        onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
+      {/* Answer action — floating above the bottom navigation */}
+      <button
+        type="button"
+        onClick={() => setComposeOpen(true)}
+        onMouseDown={e => e.stopPropagation()}
+        onTouchStart={e => e.stopPropagation()}
+        className="fixed bottom-20 right-4 z-40 flex min-h-14 max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border border-white/15 bg-white px-5 text-sm font-semibold text-black shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-transform hover:scale-[1.02] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:bottom-6 sm:right-6"
       >
-        <button
-          onClick={() => setComposeOpen(true)}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl glass border border-white/8 text-white/60 hover:text-white hover:bg-white/10 transition-all text-sm font-semibold"
-        >
-          {conversation.type === 'statement' ? 'Scrut your response' : 'Scrut your answer'}
-        </button>
-      </div>
+        <span className="text-lg leading-none">+</span>
+        {conversation.type === 'statement' ? 'Scrut your response' : 'Scrut your answer'}
+      </button>
 
       {composeOpen && (
         <ComposeModal

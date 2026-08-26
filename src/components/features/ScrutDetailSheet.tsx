@@ -111,7 +111,7 @@ export default function ScrutDetailSheet({ scrut, onClose }: Props) {
       {/* Sheet */}
       <div
         ref={sheetRef}
-        className="w-full max-w-lg mx-auto overflow-hidden"
+        className="pointer-events-auto relative w-full max-w-lg mx-auto max-h-[calc(100dvh-0.5rem)] overflow-y-auto overscroll-contain"
         style={{
           transform: `translateY(${sheetY})`,
           transition: isDragging.current ? 'none' : 'transform 0.38s cubic-bezier(0.16,1,0.3,1)',
