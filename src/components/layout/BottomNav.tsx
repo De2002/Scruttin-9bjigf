@@ -39,7 +39,7 @@ export default function BottomNav() {
   const { pathname } = useLocation();
 
   return (
-    <nav aria-label="Primary navigation" className="fixed bottom-0 left-0 right-0 z-10 safe-area-pb px-3 pb-2 transition-opacity duration-200 sm:px-5">
+    <nav aria-label="Primary navigation" className="fixed bottom-0 left-0 right-0 z-10 safe-area-pb px-3 pb-2 transition-all duration-300 ease-out sm:px-5 sheet-nav">
       <div className="mx-auto max-w-lg rounded-[1.35rem] border border-white/10 bg-black/65 p-1.5 shadow-[0_-10px_35px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
         <div className="flex items-center justify-around">
           {NAV_ITEMS.map(({ path, label, icon }) => {

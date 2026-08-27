@@ -64,9 +64,12 @@
 }
 
 @layer utilities {
+  html.sheet-active nav[aria-label="Primary navigation"],
   html.profile-sheet-active nav[aria-label="Primary navigation"] {
+    opacity: 0;
     visibility: hidden;
     pointer-events: none;
+    transform: translateY(1rem);
   }
 
   /* Font family utilities bound to user preference via CSS var */
