@@ -26,6 +26,20 @@ function AppShell({ children }: { children: React.ReactNode }) {
     supabase.from('music_tracks').select('id, title, artist, url').eq('is_active', true).then(({ data }) => setTracks(data ?? []));
   }, []);
 
+  useEffect(() => {
+    const syncOverlayState = () => {
+      const sheetIsOpen = Boolean(document.querySelector('[data-radix-dialog-content][data-state="open"], [data-radix-dialog-overlay][data-state="open"]'));
+      document.documentElement.classList.toggle('sheet-active', sheetIsOpen);
+    };
+    syncOverlayState();
+    const observer = new MutationObserver(syncOverlayState);
+    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-state'] });
+    return () => {
+      observer.disconnect();
+      document.documentElement.classList.remove('sheet-active');
+    };
+  }, []);
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-scruttin-base text-scruttin-text font-sans">
       <AmbientBackground />
