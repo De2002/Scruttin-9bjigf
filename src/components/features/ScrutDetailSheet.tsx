@@ -46,9 +46,11 @@ export default function ScrutDetailSheet({ scrut, onClose }: Props) {
   const [closing, setClosing] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // mount → trigger slide-in
+  // Keep the global bottom navigation behind the profile overlay.
   useEffect(() => {
+    document.documentElement.classList.add('profile-sheet-active');
     requestAnimationFrame(() => setMounted(true));
+    return () => document.documentElement.classList.remove('profile-sheet-active');
   }, []);
 
   const triggerClose = () => {
