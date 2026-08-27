@@ -316,17 +316,17 @@ export default function OpenPage() {
 
       {/* Modals — data-no-swipe prevents underlying swipe from firing */}
       {composeOpen && (
-        <div data-no-swipe>
+        <div data-no-swipe data-sheet-overlay>
           <ComposeModal onClose={() => setComposeOpen(false)} defaultMode="open" onPosted={() => setTimeout(loadScruts, 500)} />
         </div>
       )}
       {detailScrut && (
-        <div data-no-swipe>
+        <div data-no-swipe data-sheet-overlay>
           <ScrutDetailSheet scrut={detailScrut} onClose={() => setDetailScrut(null)} />
         </div>
       )}
       {reportScrut && (
-        <div data-no-swipe>
+        <div data-no-swipe data-sheet-overlay>
           <ReportModal scrutId={reportScrut.id} onClose={() => setReportScrut(null)} />
         </div>
       )}
