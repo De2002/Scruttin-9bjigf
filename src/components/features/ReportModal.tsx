@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 
 interface Props {
   scrutId: string;
@@ -50,10 +49,22 @@ export default function ReportModal({ scrutId, onClose }: Props) {
   };
 
   return (
-    <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <SheetContent
-        side="bottom"
-        className="z-[1001] max-h-[min(88dvh,31rem)] w-full overflow-y-auto overscroll-contain rounded-t-[1.75rem] border-white/15 bg-[#101017] p-0 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:mx-auto sm:max-w-sm sm:rounded-3xl"
+    /* Full-screen backdrop — z-[500] so it's above BottomNav (z-10) but below toasts */
+    <div
+      className="fixed inset-0 z-[500] flex items-end justify-center"
+      data-no-swipe
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+
+      <div
+        className="relative w-full max-w-sm mx-auto rounded-t-[1.75rem] overflow-hidden"
+        style={{
+          background: 'rgba(14,14,22,0.98)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+        }}
+        onClick={e => e.stopPropagation()}
       >
         {done ? (
           <div className="p-8 text-center">
@@ -62,49 +73,59 @@ export default function ReportModal({ scrutId, onClose }: Props) {
             <p className="text-white/40 text-sm">Our team will review this scrut.</p>
           </div>
         ) : (
-          <div className="p-4 sm:p-5">
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
-            <div className="mb-4 flex items-center justify-between">
-              <SheetTitle id="report-title" className="text-base font-semibold text-white">Report this Scrut</SheetTitle>
-              <button type="button" aria-label="Close report dialog" onClick={onClose} className="rounded-full p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
-                <X size={18} />
+          <div className="p-5">
+            {/* Drag handle */}
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
+
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold text-base">Report this Scrut</h3>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full p-2 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <X size={16} />
               </button>
             </div>
-            <p className="mb-3 text-sm text-white/60">Why are you reporting this?</p>
-            <div className="mb-4 grid gap-2">
+
+            <p className="text-white/55 text-sm mb-3">Why are you reporting this?</p>
+
+            <div className="space-y-2 mb-4">
               {REASONS.map(r => (
                 <button
                   key={r}
                   onClick={() => setReason(r)}
                   className={cn(
-                    'w-full min-h-11 rounded-xl border px-4 py-2.5 text-left text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70',
+                    'w-full min-h-11 rounded-xl border px-4 py-2.5 text-left text-sm transition-all',
                     reason === r
                       ? 'border-rose-400/60 bg-rose-500/20 text-white'
-                      : 'border-white/15 bg-white/[0.06] text-white/80 hover:bg-white/10'
+                      : 'border-white/12 bg-white/[0.05] text-white/75 hover:bg-white/10'
                   )}
                 >
                   {r}
                 </button>
               ))}
             </div>
+
             <button
               onClick={submit}
               disabled={!reason || submitting || !user}
               className={cn(
-                'w-full min-h-12 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70',
+                'w-full min-h-12 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold transition-all',
                 reason && user && !submitting
-                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-950/40 hover:bg-rose-400'
-                  : 'cursor-not-allowed bg-white/10 text-white/40'
+                  ? 'bg-rose-500 text-white hover:bg-rose-400'
+                  : 'bg-white/8 text-white/30 cursor-not-allowed'
               )}
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : 'Submit report'}
             </button>
+
             {!user && (
               <p className="text-white/30 text-xs text-center mt-3">Sign in to report content</p>
             )}
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+      </div>
+    </div>
   );
 }

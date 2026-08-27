@@ -4,7 +4,7 @@
  * Supports text, image, question, and statement formats.
  */
 import { useEffect, useRef, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ResonatesButton from './ResonatesButton';
 import ComposeModal from './ComposeModal';
@@ -101,21 +101,36 @@ export default function SponsoredScrutCard({
 
         <div className="flex-1" />
 
-        {/* Sponsored content only links outward; it is not a response prompt. */}
-        {campaign.destination_url && (
-          <a
-            href={campaign.destination_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => onCTAClick?.()}
+        {/* Respond */}
+        {fakeConversation && (
+          <button
+            onClick={() => {
+              onResponseStarted?.();
+              setComposeOpen(true);
+            }}
             onMouseDown={e => e.stopPropagation()}
             onTouchStart={e => e.stopPropagation()}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-amber-400 px-4 text-xs font-semibold text-black shadow-lg shadow-amber-950/20 transition-colors hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200"
-            aria-label={`Learn more about ${campaign.advertiser_name}`}
+            className="flex items-center gap-1.5 text-white/40 hover:text-white/80 text-[11px] font-medium transition-colors px-3 py-1.5 rounded-full border border-white/10 hover:border-white/25"
           >
-            Learn more
-            <ExternalLink size={14} />
-          </a>
+            Give your take
+            <ArrowRight size={11} />
+          </button>
+        )}
+
+        {/* CTA */}
+        {campaign.destination_url && (
+          <button
+            onClick={() => {
+              onCTAClick?.();
+              window.open(campaign.destination_url!, '_blank', 'noopener');
+            }}
+            onMouseDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
+            className="p-1.5 text-white/30 hover:text-white/70 transition-colors"
+            aria-label="Visit sponsor"
+          >
+            <ExternalLink size={13} />
+          </button>
         )}
       </div>
 

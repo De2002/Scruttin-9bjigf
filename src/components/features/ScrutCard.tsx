@@ -14,9 +14,7 @@ interface Props {
   showPosition?: boolean;
   onRevealComplete?: () => void;
   className?: string;
-  /** Called when the user taps the avatar on a TEXT scrut */
   onAvatarClick?: (scrut: Scrut) => void;
-  /** Wire autoplay voice from stream preference */
   autoPlayVoice?: boolean;
 }
 
@@ -71,17 +69,23 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
           autoPlay={autoPlayVoice}
           showUser
         />
-        <div className="flex items-center justify-between mt-4">
+        {/* Bottom row: clearly visible resonate, time, report */}
+        <div className="flex items-center justify-between mt-5">
           <ResonatesButton
             scrutId={scrut.id}
             initialCount={scrut.resonate_count ?? 0}
             initialResonated={scrut.resonated_by_me ?? false}
+            size="md"
           />
-          <div className="flex items-center gap-2">
-            <span className="text-white/25 text-[11px]">{timeAgo(scrut.created_at)}</span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-white/40 text-[13px] font-medium">{timeAgo(scrut.created_at)}</span>
             {user && (
-              <button onClick={() => setReportOpen(true)} className="text-white/20 hover:text-rose-400/70 p-1 rounded-lg transition-colors">
-                <Flag size={11} />
+              <button
+                onClick={e => { e.stopPropagation(); setReportOpen(true); }}
+                className="text-white/30 hover:text-rose-400/80 p-1.5 rounded-lg transition-colors"
+                aria-label="Report scrut"
+              >
+                <Flag size={14} />
               </button>
             )}
           </div>
@@ -144,17 +148,23 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
         </div>
       </div>
 
-      <div className="clear-both mt-4 flex items-center justify-between">
+      {/* Bottom row: clearly visible */}
+      <div className="clear-both mt-5 flex items-center justify-between">
         <ResonatesButton
           scrutId={scrut.id}
           initialCount={scrut.resonate_count ?? 0}
           initialResonated={scrut.resonated_by_me ?? false}
+          size="md"
         />
-        <div className="flex items-center gap-2">
-          <span className="text-white/25 text-[11px]">{timeAgo(scrut.created_at)}</span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-white/40 text-[13px] font-medium">{timeAgo(scrut.created_at)}</span>
           {user && (
-            <button onClick={() => setReportOpen(true)} className="text-white/20 hover:text-rose-400/70 p-1 rounded-lg transition-colors">
-              <Flag size={11} />
+            <button
+              onClick={e => { e.stopPropagation(); setReportOpen(true); }}
+              className="text-white/30 hover:text-rose-400/80 p-1.5 rounded-lg transition-colors"
+              aria-label="Report scrut"
+            >
+              <Flag size={14} />
             </button>
           )}
         </div>

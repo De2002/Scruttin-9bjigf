@@ -2,17 +2,18 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import resonatesRedImg from '@/assets/resonates_red.png';
-import resonatesBlackImg from '@/assets/resonates_black.png';
+import resonatesImg from '@/assets/resonates_red.png';
+import resonatesActiveImg from '@/assets/resonates_active.png';
 
 interface Props {
   scrutId: string;
   initialCount?: number;
   initialResonated?: boolean;
   className?: string;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export default function ResonatesButton({ scrutId, initialCount = 0, initialResonated = false, className }: Props) {
+export default function ResonatesButton({ scrutId, initialCount = 0, initialResonated = false, className, size = 'md' }: Props) {
   const { user } = useAuth();
   const [resonated, setResonated] = useState(initialResonated);
   const [count, setCount] = useState(initialCount);
@@ -32,7 +33,7 @@ export default function ResonatesButton({ scrutId, initialCount = 0, initialReso
     setCount(c => next ? c + 1 : Math.max(0, c - 1));
     if (next) {
       setBurst(true);
-      setTimeout(() => setBurst(false), 500);
+      setTimeout(() => setBurst(false), 600);
     }
     setPending(true);
     if (next) {
@@ -43,6 +44,9 @@ export default function ResonatesButton({ scrutId, initialCount = 0, initialReso
     setPending(false);
   };
 
+  const iconSize = size === 'lg' ? 34 : size === 'sm' ? 22 : 28;
+  const textSize = size === 'lg' ? 'text-sm' : size === 'sm' ? 'text-[10px]' : 'text-[12px]';
+
   return (
     <button
       onClick={toggle}
@@ -50,7 +54,6 @@ export default function ResonatesButton({ scrutId, initialCount = 0, initialReso
       disabled={!user}
       className={cn(
         'flex items-center gap-1.5 transition-all duration-200 group select-none',
-        resonated ? 'opacity-100' : 'opacity-35 hover:opacity-70',
         !user && 'cursor-default',
         className
       )}
@@ -59,33 +62,34 @@ export default function ResonatesButton({ scrutId, initialCount = 0, initialReso
       <span
         className={cn(
           'relative flex items-center justify-center transition-all duration-200',
-          burst ? 'scale-125' : resonated ? 'scale-110' : 'scale-100 group-hover:scale-105',
+          burst ? 'scale-130' : resonated ? 'scale-110' : 'scale-100 group-hover:scale-110',
         )}
-        style={{ width: 30, height: 30 }}
+        style={{ width: iconSize, height: iconSize }}
       >
         <img
-          src={resonated ? resonatesRedImg : resonatesBlackImg}
+          src={resonated ? resonatesActiveImg : resonatesImg}
           alt="Resonates"
           className={cn(
             'w-full h-full object-contain transition-all duration-200',
-            !resonated && 'brightness-0 invert opacity-60'
+            !resonated && 'opacity-55 group-hover:opacity-80',
           )}
         />
+        {/* Ripple on activation */}
         {burst && (
-          <span
-            className="absolute inset-0 rounded-full bg-rose-400/20 animate-ping"
-            style={{ animationDuration: '0.5s', animationIterationCount: '1' }}
-          />
+          <>
+            <span className="absolute inset-0 rounded-full bg-rose-400/25 animate-ping" style={{ animationDuration: '0.45s', animationIterationCount: '1' }} />
+            <span className="absolute inset-[-6px] rounded-full bg-rose-400/12 animate-ping" style={{ animationDuration: '0.6s', animationIterationCount: '1' }} />
+          </>
         )}
       </span>
-      {count > 0 && (
-        <span className={cn(
-          'text-[11px] font-medium tabular-nums transition-colors duration-200',
-          resonated ? 'text-rose-400' : 'text-white/40'
-        )}>
-          {count}
-        </span>
-      )}
+      <span className={cn(
+        'font-medium tabular-nums transition-all duration-200',
+        textSize,
+        resonated ? 'text-rose-400' : 'text-white/45 group-hover:text-white/65',
+        count === 0 && !resonated && 'opacity-0'
+      )}>
+        {count > 0 ? count : ''}
+      </span>
     </button>
   );
 }

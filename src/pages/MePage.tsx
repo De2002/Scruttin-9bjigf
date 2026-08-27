@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Mic2, MessageCircle, ChevronRight, 
-  Camera, Loader2, Edit3, Check, X, Shield
-} from 'lucide-react';
+import { Mic2, MessageCircle, Camera, Loader2, Edit3, Check, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import AtmosphereControls from '@/components/layout/AtmosphereControls';
 import MakeScruttinYours from '@/components/features/MakeScruttinYours';
+import MeTopBar from '@/components/features/MeTopBar';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -23,11 +20,10 @@ interface MyScrut {
   conversation?: { body: string; topic: string };
 }
 
-// Shared dark input class — prevents white browser default styling
 const INPUT_CLS = 'w-full bg-[rgba(255,255,255,0.07)] border border-[rgba(255,255,255,0.12)] rounded-xl px-3 py-2.5 text-white text-sm placeholder-[rgba(255,255,255,0.25)] focus:outline-none focus:border-[rgba(255,255,255,0.28)] transition-colors';
 
 export default function MePage() {
-  const { user, loading, logout, refreshUser } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<Tab>('scruts');
@@ -114,12 +110,6 @@ export default function MePage() {
     toast.success('Photo updated');
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    logout();
-    navigate('/', { replace: true });
-  };
-
   if (loading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -135,14 +125,7 @@ export default function MePage() {
       {/* Top bar */}
       <div className="px-5 pt-safe pt-4 pb-0 flex items-center justify-between shrink-0">
         <h1 className="text-white font-bold text-xl tracking-tight">Me</h1>
-        <div className="flex items-center gap-2">
-          {user.is_admin && (
-            <button onClick={() => navigate('/admin')} className="text-amber-400/60 hover:text-amber-300 transition-colors p-1">
-              <Shield size={16} />
-            </button>
-          )}
-          <AtmosphereControls />
-        </div>
+        <MeTopBar />
       </div>
 
       {/* Profile hero */}
@@ -215,7 +198,6 @@ export default function MePage() {
             )}
           </div>
 
-          {/* Bio */}
           {editing ? (
             <textarea
               value={editBio}
@@ -228,30 +210,12 @@ export default function MePage() {
             user.bio && <p className="text-white/55 text-[13px] font-serif leading-[1.65] mb-4">{user.bio}</p>
           )}
 
-          {/* Extended edit fields */}
           {editing && (
             <div className="space-y-2 mb-4">
-              <input
-                value={editWebsite}
-                onChange={e => setEditWebsite(e.target.value)}
-                placeholder="Website"
-                className={INPUT_CLS}
-              />
+              <input value={editWebsite} onChange={e => setEditWebsite(e.target.value)} placeholder="Website" className={INPUT_CLS} />
               <div className="flex gap-2">
-                <input
-                  value={editTwitter}
-                  onChange={e => setEditTwitter(e.target.value)}
-                  placeholder="Twitter / X"
-                  className={cn(INPUT_CLS, 'flex-1')}
-                  style={{ width: 'auto' }}
-                />
-                <input
-                  value={editInstagram}
-                  onChange={e => setEditInstagram(e.target.value)}
-                  placeholder="Instagram"
-                  className={cn(INPUT_CLS, 'flex-1')}
-                  style={{ width: 'auto' }}
-                />
+                <input value={editTwitter} onChange={e => setEditTwitter(e.target.value)} placeholder="Twitter / X" className={cn(INPUT_CLS, 'flex-1')} style={{ width: 'auto' }} />
+                <input value={editInstagram} onChange={e => setEditInstagram(e.target.value)} placeholder="Instagram" className={cn(INPUT_CLS, 'flex-1')} style={{ width: 'auto' }} />
               </div>
             </div>
           )}
@@ -343,11 +307,6 @@ export default function MePage() {
                   <p className="text-white/60 text-sm">{new Date(user.date_of_birth).toLocaleDateString()}</p>
                 </div>
               )}
-              <button onClick={handleLogout}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/4 border border-white/6 hover:bg-rose-500/10 hover:border-rose-500/20 transition-all group">
-                <span className="text-white/50 group-hover:text-rose-300 text-sm transition-colors">Sign out</span>
-                <ChevronRight size={14} className="text-white/20 group-hover:text-rose-300 transition-colors" />
-              </button>
             </div>
           </div>
         )}

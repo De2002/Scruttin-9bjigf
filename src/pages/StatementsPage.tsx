@@ -16,8 +16,6 @@ function ScalesIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-const TOPICS = ['All', 'Relationships', 'Work', 'Money', 'Technology', 'Culture', 'Society', 'Life'];
-
 function mapConv(c: Record<string, unknown>): ConversationStarter {
   const u = (c.user as Record<string, unknown>) ?? {};
   return {
@@ -45,24 +43,30 @@ export default function StatementsPage() {
   const [activeTopic, setActiveTopic] = useState('All');
   const [conversations, setConversations] = useState<ConversationStarter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dbTopics, setDbTopics] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('conversations')
-        .select('*, user:user_id(id, display_name, avatar_url, country)')
-        .eq('type', 'statement')
-        .eq('is_reported', false)
-        .order('created_at', { ascending: false });
-      setConversations((data ?? []).map(mapConv));
+      const [convRes, topicsRes] = await Promise.all([
+        supabase.from('conversations')
+          .select('id, user_id, type, body, topic, is_platform, scrut_count, country_count, created_at, user:user_id(id, display_name, avatar_url, country)')
+          .eq('type', 'statement')
+          .eq('is_reported', false)
+          .order('created_at', { ascending: false }),
+        supabase.from('topics').select('label').order('sort_order'),
+      ]);
+      setConversations((convRes.data ?? []).map(c => mapConv(c as Record<string, unknown>)));
+      if (topicsRes.data && topicsRes.data.length > 0) {
+        setDbTopics(topicsRes.data.map((t: { label: string }) => t.label));
+      }
       setLoading(false);
     })();
   }, []);
 
-  const items = conversations.filter(c =>
-    activeTopic === 'All' || c.topic === activeTopic
-  );
+  const TOPICS = ['All', ...new Set([...dbTopics, ...conversations.map(c => c.topic).filter(Boolean)])];
+
+  const items = conversations.filter(c => activeTopic === 'All' || c.topic === activeTopic);
 
   return (
     <div className="flex flex-col min-h-screen pb-20">

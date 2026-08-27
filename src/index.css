@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,6 +12,9 @@
     --scruttin-text: 240 240 245;
     --scruttin-muted: 160 165 180;
     --scruttin-accent: 168 85 247;
+    /* Font preference — set by JS via document.documentElement.setAttribute */
+    --scruttin-font: 'Inter', sans-serif;
+    --scruttin-text-scale: 1;
   }
 
   * {
@@ -26,11 +29,12 @@
   }
 
   body {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--scruttin-font);
     background-color: rgb(var(--scruttin-base));
     color: rgb(var(--scruttin-text));
     -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
+    font-size: calc(16px * var(--scruttin-text-scale));
   }
 
   /* Global dark inputs — prevent browser light default */
@@ -60,8 +64,17 @@
 }
 
 @layer utilities {
+  /* Font family utilities bound to user preference via CSS var */
+  .font-sans-app {
+    font-family: var(--scruttin-font);
+  }
+
   .font-serif {
     font-family: 'Lora', serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
   }
 
   .text-balance {
@@ -135,14 +148,8 @@
   }
 
   @keyframes scrutExitUp {
-    from {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    to {
-      opacity: 0;
-      transform: translateY(-48px);
-    }
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-48px); }
   }
 
   .scrut-enter-below {
@@ -150,22 +157,8 @@
   }
 
   @keyframes scrutEnterBelow {
-    from {
-      opacity: 0;
-      transform: translateY(56px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Double-tap heart flash */
-  @keyframes heartFlash {
-    0%   { opacity: 0; transform: scale(0.4); }
-    25%  { opacity: 1; transform: scale(1.25); }
-    55%  { opacity: 1; transform: scale(1.0); }
-    100% { opacity: 0; transform: scale(0.85); }
+    from { opacity: 0; transform: translateY(56px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
   /* Tutorial bob */

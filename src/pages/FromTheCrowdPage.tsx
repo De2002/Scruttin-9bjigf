@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Globe, Mic2, Loader2, Plus, X } from 'lucide-react';
+import { ChevronLeft, Globe, Mic2, Loader2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn, formatCount } from '@/lib/utils';
 import AtmosphereControls from '@/components/layout/AtmosphereControls';
@@ -14,13 +14,10 @@ function CrowdIcon({ size = 24 }: { size?: number }) {
       <circle cx="9" cy="7" r="3" />
       <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
       <circle cx="17" cy="8" r="2.5" />
-      <path d="M14 20c0-2.7 1.8-4.8 4-5.5" />
-      <path d="M21 20c0-2.5-1.5-4.5-3.5-5.2" />
+      <path d="M14 20c.5-2.5 2-4.5 4-5" />
     </svg>
   );
 }
-
-const TOPICS = ['All', 'Life', 'Relationships', 'Work', 'Money', 'Technology', 'Culture', 'Family', 'Society', 'Fun'];
 
 function mapConv(c: Record<string, unknown>): ConversationStarter {
   const u = (c.user as Record<string, unknown>) ?? {};
@@ -51,6 +48,7 @@ export default function FromTheCrowdPage() {
   const [conversations, setConversations] = useState<ConversationStarter[]>([]);
   const [loading, setLoading] = useState(true);
   const [askOpen, setAskOpen] = useState(false);
+  const [dbTopics, setDbTopics] = useState<string[]>([]);
 
   // Ask form state
   const [question, setQuestion] = useState('');
@@ -61,16 +59,30 @@ export default function FromTheCrowdPage() {
     setLoading(true);
     const { data } = await supabase
       .from('conversations')
-      .select('*, user:user_id(id, display_name, avatar_url, country)')
+      .select('id, user_id, type, body, topic, is_platform, scrut_count, country_count, created_at, user:user_id(id, display_name, avatar_url, country)')
       .eq('is_platform', false)
       .eq('type', 'question')
       .eq('is_reported', false)
       .order('created_at', { ascending: false });
-    setConversations((data ?? []).map(mapConv));
+    setConversations((data ?? []).map(c => mapConv(c as Record<string, unknown>)));
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
+  // Load topics from DB
+  useEffect(() => {
+    supabase.from('topics').select('label').order('sort_order').then(({ data }) => {
+      if (data && data.length > 0) {
+        setDbTopics(data.map((t: { label: string }) => t.label));
+        setSelectedTopic(data[0].label);
+      } else {
+        setDbTopics(['Life', 'Relationships', 'Work', 'Money', 'Technology', 'Culture', 'Family', 'Society', 'Fun']);
+      }
+    });
+  }, []);
+
+  const TOPICS = ['All', ...new Set([...dbTopics, ...conversations.map(c => c.topic).filter(Boolean)])];
 
   const submitQuestion = async () => {
     if (!question.trim() || !user) return;
@@ -90,11 +102,7 @@ export default function FromTheCrowdPage() {
     load();
   };
 
-  const items = conversations.filter(c =>
-    activeTopic === 'All' || c.topic === activeTopic
-  );
-
-  const INPUT = 'w-full bg-[rgba(255,255,255,0.07)] border border-[rgba(255,255,255,0.12)] rounded-xl px-3 py-2.5 text-white text-sm placeholder-[rgba(255,255,255,0.25)] focus:outline-none focus:border-[rgba(255,255,255,0.28)] transition-colors';
+  const items = conversations.filter(c => activeTopic === 'All' || c.topic === activeTopic);
 
   return (
     <div className="flex flex-col min-h-screen pb-24">
@@ -115,6 +123,7 @@ export default function FromTheCrowdPage() {
 
       <div className="mx-5 mb-4 border-t border-white/6 shrink-0" />
 
+      {/* Topic filter */}
       <div className="px-4 mb-4 shrink-0">
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
           {TOPICS.map(topic => (
@@ -131,7 +140,7 @@ export default function FromTheCrowdPage() {
         </div>
       </div>
 
-      {/* Ask sheet */}
+      {/* Ask inline form */}
       {askOpen && (
         <div className="mx-4 mb-4 p-4 rounded-2xl bg-white/5 border border-white/10 shrink-0 space-y-3">
           <div className="flex items-center justify-between">
@@ -150,12 +159,10 @@ export default function FromTheCrowdPage() {
           <div>
             <p className="text-white/30 text-[10px] mb-1.5">Topic</p>
             <div className="flex flex-wrap gap-1.5">
-              {TOPICS.slice(1).map(t => (
+              {dbTopics.map(t => (
                 <button key={t} onClick={() => setSelectedTopic(t)}
                   className={cn('px-3 py-1 rounded-full text-xs font-medium transition-all border',
-                    selectedTopic === t
-                      ? 'bg-sky-400/15 text-sky-300 border-sky-400/30'
-                      : 'bg-white/4 text-white/35 border-white/8 hover:bg-white/10')}>
+                    selectedTopic === t ? 'bg-sky-400/15 text-sky-300 border-sky-400/30' : 'bg-white/4 text-white/35 border-white/8 hover:bg-white/10')}>
                   {t}
                 </button>
               ))}
@@ -165,14 +172,14 @@ export default function FromTheCrowdPage() {
             onClick={submitQuestion}
             disabled={!question.trim() || submitting}
             className={cn('w-full py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all',
-              question.trim() && !submitting ? 'bg-white text-black' : 'bg-white/8 text-white/30 cursor-not-allowed')}
-          >
+              question.trim() && !submitting ? 'bg-white text-black' : 'bg-white/8 text-white/30 cursor-not-allowed')}>
             {submitting ? <Loader2 size={14} className="animate-spin" /> : 'Post question'}
           </button>
           {!user && <p className="text-white/30 text-xs text-center">Sign in to ask a question</p>}
         </div>
       )}
 
+      {/* List */}
       <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-4">
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 size={20} className="text-white/20 animate-spin" /></div>
@@ -206,7 +213,7 @@ export default function FromTheCrowdPage() {
         )}
       </div>
 
-      {/* FAB — Ask a question */}
+      {/* FAB */}
       <button
         onClick={() => {
           if (!user) { navigate('/auth'); return; }

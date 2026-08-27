@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { OPEN_SCRUTS } from '@/constants/mockData';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
+import { usePreferences } from '@/stores/preferencesStore';
 import TextReveal from '@/components/features/TextReveal';
 import VoiceScrutCard from '@/components/features/VoiceScrutCard';
 import UserAvatar from '@/components/features/UserAvatar';
@@ -7,7 +8,10 @@ import AtmosphereControls from '@/components/layout/AtmosphereControls';
 import ComposeModal from '@/components/features/ComposeModal';
 import ScrutDetailSheet from '@/components/features/ScrutDetailSheet';
 import ResonatesButton from '@/components/features/ResonatesButton';
-import { cn } from '@/lib/utils';
+import ReportModal from '@/components/features/ReportModal';
+import { cn, timeAgo } from '@/lib/utils';
+import { Flag, Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Scrut } from '@/types';
 
 const TUTORIAL_KEY = 'scruttin_open_swipe_seen';
@@ -15,20 +19,103 @@ const SWIPE_THRESHOLD = 52;
 
 type Phase = 'idle' | 'exiting' | 'entering';
 
+const COUNTRY_ISO: Record<string, string> = {
+  Nigeria:'ng', Brazil:'br', UK:'gb', 'United Kingdom':'gb', Ghana:'gh', Japan:'jp',
+  Italy:'it', India:'in', Mexico:'mx', Morocco:'ma', Germany:'de', USA:'us',
+  'United States':'us', China:'cn', France:'fr', Spain:'es', Canada:'ca',
+  Australia:'au', Argentina:'ar', 'South Africa':'za', Kenya:'ke', Egypt:'eg',
+  Turkey:'tr', Indonesia:'id', Pakistan:'pk', Bangladesh:'bd', Philippines:'ph',
+  Vietnam:'vn', Iran:'ir', Thailand:'th', Ethiopia:'et', Tanzania:'tz',
+  Colombia:'co', Chile:'cl', Peru:'pe', Venezuela:'ve', Ecuador:'ec', Bolivia:'bo',
+  Sweden:'se', Norway:'no', Denmark:'dk', Finland:'fi', Netherlands:'nl',
+  Belgium:'be', Switzerland:'ch', Austria:'at', Poland:'pl', Portugal:'pt',
+  Greece:'gr', Ukraine:'ua', Russia:'ru', 'South Korea':'kr', 'Saudi Arabia':'sa',
+  UAE:'ae', 'United Arab Emirates':'ae', Uganda:'ug', Rwanda:'rw', Senegal:'sn',
+};
+
+function getMapUrl(country: string | undefined) {
+  if (!country) return null;
+  const iso = COUNTRY_ISO[country];
+  return iso ? `https://raw.githubusercontent.com/djaiss/mapsicon/master/all/${iso}/256.png` : null;
+}
+
+function mapUser(p: Record<string, unknown>) {
+  return {
+    id: (p.id as string) ?? '',
+    display_name: (p.display_name as string) ?? 'Anonymous',
+    avatar_url: (p.avatar_url as string) ?? '',
+    country: (p.country as string) ?? '',
+    city: p.city as string | undefined,
+    bio: p.bio as string | undefined,
+    website: p.website as string | undefined,
+    twitter: p.twitter as string | undefined,
+    instagram: p.instagram as string | undefined,
+  };
+}
+
 export default function OpenPage() {
+  const { user } = useAuth();
+  const [scruts, setScruts] = useState<Scrut[]>([]);
+  const [loading, setLoading] = useState(true);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [composeOpen, setComposeOpen] = useState(false);
   const [detailScrut, setDetailScrut] = useState<Scrut | null>(null);
+  const [reportScrut, setReportScrut] = useState<Scrut | null>(null);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem(TUTORIAL_KEY));
   const [tutorialVisible, setTutorialVisible] = useState(true);
+
+  const { autoPlayVoice } = usePreferences();
 
   const touchStartY = useRef(0);
   const mouseStartY = useRef(0);
   const isDragging = useRef(false);
   const advancing = useRef(false);
 
-  const scrut = OPEN_SCRUTS[index];
+  const loadScruts = async () => {
+    setLoading(true);
+    // Open scruts = standalone scruts (no conversation_id) OR scruts marked type='open'
+    const { data } = await supabase
+      .from('scruts')
+      .select('id, type, text, audio_url, audio_duration, resonate_count, created_at, user:user_id(id, display_name, avatar_url, country, city, bio, website, twitter, instagram)')
+      .is('conversation_id', null)
+      .eq('is_reported', false)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (data && data.length > 0) {
+      // Check resonates for current user
+      let resonatedIds: string[] = [];
+      if (user) {
+        const ids = (data as Record<string, unknown>[]).map(s => s.id as string);
+        const { data: resonates } = await supabase
+          .from('resonates')
+          .select('scrut_id')
+          .in('scrut_id', ids)
+          .eq('user_id', user.id);
+        resonatedIds = (resonates ?? []).map((r: Record<string, unknown>) => r.scrut_id as string);
+      }
+
+      setScruts((data as Record<string, unknown>[]).map(s => ({
+        id: s.id as string,
+        user: mapUser(s.user as Record<string, unknown>),
+        conversation_id: null,
+        type: s.type as 'text' | 'voice',
+        text: s.text as string | undefined,
+        audio_url: s.audio_url as string | undefined,
+        audio_duration: s.audio_duration as number | undefined,
+        position: null,
+        resonate_count: (s.resonate_count as number) ?? 0,
+        resonated_by_me: resonatedIds.includes(s.id as string),
+        created_at: s.created_at as string,
+      })));
+    } else {
+      setScruts([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadScruts(); }, [user]);
 
   useEffect(() => {
     if (!showTutorial) return;
@@ -46,24 +133,33 @@ export default function OpenPage() {
     }
     setPhase('exiting');
     setTimeout(() => {
-      setIndex(prev => (prev + 1) % OPEN_SCRUTS.length);
+      setIndex(prev => (prev + 1) % Math.max(1, scruts.length));
       setPhase('entering');
       requestAnimationFrame(() => requestAnimationFrame(() => {
         setPhase('idle');
         advancing.current = false;
       }));
     }, 380);
-  }, [showTutorial]);
+  }, [showTutorial, scruts.length]);
 
-  const onTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
+  const onTouchStart = (e: React.TouchEvent) => {
+    // Don't track if touch starts in a modal/sheet
+    if ((e.target as HTMLElement).closest('[data-no-swipe]')) return;
+    touchStartY.current = e.touches[0].clientY;
+  };
   const onTouchEnd = (e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('[data-no-swipe]')) return;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (dy < -SWIPE_THRESHOLD) advance();
   };
-  const onMouseDown = (e: React.MouseEvent) => { mouseStartY.current = e.clientY; isDragging.current = true; };
+  const onMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-no-swipe]')) return;
+    mouseStartY.current = e.clientY; isDragging.current = true;
+  };
   const onMouseUp = (e: React.MouseEvent) => {
     if (!isDragging.current) return;
     isDragging.current = false;
+    if ((e.target as HTMLElement).closest('[data-no-swipe]')) return;
     const dy = e.clientY - mouseStartY.current;
     if (dy < -SWIPE_THRESHOLD) advance();
   };
@@ -73,6 +169,8 @@ export default function OpenPage() {
     phase === 'entering' && 'scrut-enter-below',
     phase === 'idle' && 'opacity-100 translate-y-0',
   );
+
+  const scrut = scruts[index];
 
   return (
     <div
@@ -86,59 +184,110 @@ export default function OpenPage() {
       {/* Top controls */}
       <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-5 pt-safe pt-4 pointer-events-none">
         <span className="text-white/20 text-[11px] font-medium tracking-widest uppercase">Open</span>
-        <span className="pointer-events-auto">
+        <span className="pointer-events-auto" data-no-swipe>
           <AtmosphereControls />
         </span>
       </div>
 
-      {/* Animated scrut content */}
-      <div key={scrut.id} className={cn('w-full max-w-sm px-7 z-10', contentAnim)}>
-        {/* Text Scruts keep the tappable identity row; voice identity lives in the player. */}
-        {scrut.type !== 'voice' && (
-          <div className="mb-6 flex items-end gap-3">
-            <button
-              type="button"
-              aria-label={`View ${scrut.user.display_name} profile`}
-              className="pointer-events-auto cursor-pointer rounded-full transition-opacity hover:opacity-80 active:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-              onClick={e => { e.stopPropagation(); setDetailScrut(scrut); }}
-              onTouchEnd={e => { e.stopPropagation(); setDetailScrut(scrut); }}
-            >
-              <UserAvatar user={scrut.user} size="lg" shape="circle" />
-            </button>
-            <div className="pb-0.5">
-              <p className="text-white font-semibold text-[15px] leading-tight">{scrut.user.display_name}</p>
-              {(scrut.user.city || scrut.user.country) && <p className="mt-0.5 text-xs text-white/35">{scrut.user.city ? `${scrut.user.city}, ${scrut.user.country}` : scrut.user.country}</p>}
+      {/* Content */}
+      {loading ? (
+        <div className="flex flex-col items-center gap-3 text-white/30">
+          <Loader2 size={20} className="animate-spin opacity-30" />
+          <span className="text-xs">Loading…</span>
+        </div>
+      ) : scruts.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 text-white/30 px-8 text-center">
+          <p className="text-3xl">🎙</p>
+          <p className="font-medium text-white/40 text-sm">No scruts here yet</p>
+          <p className="text-xs">Be the first — tap Scrut below</p>
+        </div>
+      ) : scrut ? (
+        <div key={`${scrut.id}-${index}`} className={cn('w-full max-w-sm px-7 z-10', contentAnim)}>
+          {/* Text scrut layout */}
+          {scrut.type !== 'voice' && (
+            <div className="mb-5 flex items-center gap-3">
+              {/* Tappable avatar (profile sheet) */}
+              <button
+                type="button"
+                data-no-swipe
+                aria-label={`View ${scrut.user.display_name} profile`}
+                className="pointer-events-auto cursor-pointer rounded-full transition-opacity hover:opacity-80 active:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 shrink-0"
+                onClick={e => { e.stopPropagation(); setDetailScrut(scrut); }}
+                onTouchEnd={e => { e.stopPropagation(); setDetailScrut(scrut); }}
+              >
+                <UserAvatar user={scrut.user} size="lg" shape="circle" />
+              </button>
+
+              <div className="flex-1 min-w-0 pb-0.5">
+                <p className="text-white font-semibold text-[15px] leading-tight truncate">{scrut.user.display_name}</p>
+                {(scrut.user.city || scrut.user.country) && (
+                  <p className="mt-0.5 text-xs text-white/35 truncate">
+                    {scrut.user.city ? `${scrut.user.city}, ${scrut.user.country}` : scrut.user.country}
+                  </p>
+                )}
+              </div>
+
+              {/* Country map — inline opposite avatar */}
+              {getMapUrl(scrut.user.country) && (
+                <img
+                  src={getMapUrl(scrut.user.country)!}
+                  alt={scrut.user.country}
+                  aria-hidden
+                  className="w-10 h-10 object-contain opacity-55 shrink-0 pointer-events-none select-none"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Text content */}
+          {(scrut.type === 'text' || scrut.type === 'voice_text') && scrut.text && (
+            <TextReveal
+              text={scrut.text}
+              className="text-white/88 text-[19px] font-serif leading-[1.72] tracking-[0.01em]"
+            />
+          )}
+
+          {/* Voice */}
+          {scrut.type === 'voice' && (
+            <div className="py-4">
+              <VoiceScrutCard
+                duration={scrut.audio_duration ?? 30}
+                user={scrut.user}
+                scrutId={scrut.id}
+                audioUrl={scrut.audio_url}
+                autoPlay={autoPlayVoice}
+              />
+            </div>
+          )}
+
+          {/* Bottom row: resonate + time + report */}
+          <div className="mt-6 flex items-center justify-between" data-no-swipe>
+            <ResonatesButton
+              scrutId={scrut.id}
+              initialCount={scrut.resonate_count ?? 0}
+              initialResonated={scrut.resonated_by_me ?? false}
+              size="lg"
+            />
+            <div className="flex items-center gap-3">
+              <span className="text-white/35 text-[12px]">{timeAgo(scrut.created_at)}</span>
+              {user && (
+                <button
+                  data-no-swipe
+                  onClick={e => { e.stopPropagation(); setReportScrut(scrut); }}
+                  onTouchEnd={e => { e.stopPropagation(); setReportScrut(scrut); }}
+                  className="pointer-events-auto p-2 text-white/30 hover:text-rose-400/80 transition-colors rounded-lg"
+                  aria-label="Report"
+                >
+                  <Flag size={14} />
+                </button>
+              )}
             </div>
           </div>
-        )}
-
-        {/* Text scrut */}
-        {(scrut.type === 'text' || scrut.type === 'voice_text') && scrut.text && (
-          <TextReveal
-            text={scrut.text}
-            className="text-white/88 text-[19px] font-serif leading-[1.72] tracking-[0.01em]"
-          />
-        )}
-
-        {/* Voice-only scrut */}
-        {scrut.type === 'voice' && scrut.audio_duration && (
-          <div className="py-4">
-            <VoiceScrutCard duration={scrut.audio_duration} user={scrut.user} audioUrl={scrut.audio_url} />
-          </div>
-        )}
-
-        {/* Resonates */}
-        <div className="mt-8">
-          <ResonatesButton
-            scrutId={scrut.id}
-            initialCount={scrut.resonate_count ?? 0}
-            initialResonated={scrut.resonated_by_me ?? false}
-          />
         </div>
-      </div>
+      ) : null}
 
       {/* Tutorial hint */}
-      {showTutorial && (
+      {showTutorial && scruts.length > 0 && (
         <div className={cn('absolute bottom-28 left-0 right-0 flex flex-col items-center gap-1.5 z-20 pointer-events-none transition-opacity duration-700', tutorialVisible ? 'opacity-60' : 'opacity-0')}>
           <span className="text-white text-base" style={{ animation: 'tutorialBob 1.8s ease-in-out infinite' }}>↑</span>
           <p className="text-white/55 text-[11px] tracking-widest uppercase font-medium">Swipe for next Scrut</p>
@@ -150,20 +299,37 @@ export default function OpenPage() {
         onClick={() => setComposeOpen(true)}
         onMouseDown={e => e.stopPropagation()}
         onTouchStart={e => e.stopPropagation()}
+        data-no-swipe
         className="absolute bottom-24 right-5 z-30 glass border border-white/10 rounded-full px-4 h-10 text-white/50 hover:text-white/80 font-semibold text-sm transition-all duration-200 hover:border-white/20"
       >
         Scrut
       </button>
 
       {/* Progress dots */}
-      <div className="absolute bottom-[5.5rem] left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
-        {OPEN_SCRUTS.map((_, i) => (
-          <span key={i} className={cn('rounded-full transition-all duration-300', i === index ? 'w-4 h-1 bg-white/50' : 'w-1 h-1 bg-white/15')} />
-        ))}
-      </div>
+      {scruts.length > 1 && (
+        <div className="absolute bottom-[5.5rem] left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
+          {scruts.slice(0, Math.min(scruts.length, 12)).map((_, i) => (
+            <span key={i} className={cn('rounded-full transition-all duration-300', i === index % 12 ? 'w-4 h-1 bg-white/50' : 'w-1 h-1 bg-white/15')} />
+          ))}
+        </div>
+      )}
 
-      {composeOpen && <ComposeModal onClose={() => setComposeOpen(false)} defaultMode="open" />}
-      {detailScrut && <ScrutDetailSheet scrut={detailScrut} onClose={() => setDetailScrut(null)} />}
+      {/* Modals — data-no-swipe prevents underlying swipe from firing */}
+      {composeOpen && (
+        <div data-no-swipe>
+          <ComposeModal onClose={() => setComposeOpen(false)} defaultMode="open" onPosted={() => setTimeout(loadScruts, 500)} />
+        </div>
+      )}
+      {detailScrut && (
+        <div data-no-swipe>
+          <ScrutDetailSheet scrut={detailScrut} onClose={() => setDetailScrut(null)} />
+        </div>
+      )}
+      {reportScrut && (
+        <div data-no-swipe>
+          <ReportModal scrutId={reportScrut.id} onClose={() => setReportScrut(null)} />
+        </div>
+      )}
     </div>
   );
 }
