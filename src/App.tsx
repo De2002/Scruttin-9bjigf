@@ -28,12 +28,12 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const syncOverlayState = () => {
-      const sheetIsOpen = Boolean(document.querySelector('[data-radix-dialog-content][data-state="open"], [data-radix-dialog-overlay][data-state="open"]'));
+      const sheetIsOpen = Boolean(document.querySelector('[data-sheet-overlay], [data-radix-dialog-content][data-state="open"], [data-radix-dialog-overlay][data-state="open"]'));
       document.documentElement.classList.toggle('sheet-active', sheetIsOpen);
     };
     syncOverlayState();
     const observer = new MutationObserver(syncOverlayState);
-    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-state'] });
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-state'] });
     return () => {
       observer.disconnect();
       document.documentElement.classList.remove('sheet-active');
