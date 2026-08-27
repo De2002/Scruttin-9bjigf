@@ -242,11 +242,11 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
                   onChange={e => setBody(e.target.value)}
                   placeholder={placeholder}
                   rows={3}
-                  maxLength={mode === 'open' ? 400 : 280}
+                  maxLength={300}
                   className="w-full bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] rounded-2xl p-3 text-white placeholder-[rgba(255,255,255,0.25)] text-sm resize-none focus:outline-none focus:border-[rgba(255,255,255,0.25)] font-serif leading-relaxed"
                 />
                 <div className="flex items-center justify-between mt-1 mb-4">
-                  <span className="text-white/25 text-[10px]">{body.length} / {mode === 'open' ? 400 : 280}</span>
+                  <span className="text-white/25 text-[10px]">{body.length} / 300</span>
                 </div>
               </>
             )}

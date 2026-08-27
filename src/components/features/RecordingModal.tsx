@@ -16,6 +16,8 @@ export default function RecordingModal({ onRecorded, onCancel }: Props) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState(0);
   const [error, setError] = useState('');
+  const MAX_DURATION = 180;
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -34,6 +36,12 @@ export default function RecordingModal({ onRecorded, onCancel }: Props) {
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        if (blob.size > MAX_FILE_SIZE) {
+          setError('Voice Scruts must be 5 MB or smaller. Please record a shorter take.');
+          setState('idle');
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
         blobRef.current = blob;
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
@@ -44,7 +52,15 @@ export default function RecordingModal({ onRecorded, onCancel }: Props) {
 
       mr.start(200);
       setState('recording');
-      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+      timerRef.current = setInterval(() => {
+        setDuration(d => {
+          if (d + 1 >= MAX_DURATION) {
+            window.setTimeout(stopRecording, 0);
+            return MAX_DURATION;
+          }
+          return d + 1;
+        });
+      }, 1000);
     } catch {
       setError('Microphone access denied. Please allow microphone access and try again.');
     }
@@ -57,6 +73,10 @@ export default function RecordingModal({ onRecorded, onCancel }: Props) {
 
   const upload = async () => {
     if (!blobRef.current || !user) return;
+    if (blobRef.current.size > MAX_FILE_SIZE || audioDuration > MAX_DURATION) {
+      setError('Voice Scruts must be no longer than 3 minutes and 5 MB.');
+      return;
+    }
     setState('uploading');
     const path = `${user.id}/${Date.now()}.webm`;
     const { data, error: e } = await supabase.storage

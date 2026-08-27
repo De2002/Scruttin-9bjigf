@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { formatDuration, cn } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
@@ -15,9 +15,8 @@ interface Props {
   onPlaybackEnd?: () => void;
   onPlaybackStart?: () => void;
   showUser?: boolean;
+  onAvatarClick?: () => void;
 }
-
-const BAR_HEIGHTS = [18,28,42,25,34,50,30,44,22,38,55,31,47,26,40,20,35,52,29,43,24,37,49,27,41,19,33,46,23,39,30,48,26,36,21,32];
 
 const COUNTRY_ISO: Record<string, string> = {
   Nigeria:'ng', Brazil:'br', Ghana:'gh', Japan:'jp', India:'in', Mexico:'mx',
@@ -32,7 +31,7 @@ const COUNTRY_ISO: Record<string, string> = {
 
 export default function VoiceScrutCard({
   duration, user, scrutId, audioUrl, className, autoPlay = false,
-  onPlaybackEnd, onPlaybackStart, showUser = true,
+  onPlaybackEnd, onPlaybackStart, showUser = true, onAvatarClick,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -45,7 +44,6 @@ export default function VoiceScrutCard({
   const mapUrl = user.country && COUNTRY_ISO[user.country]
     ? `https://raw.githubusercontent.com/djaiss/mapsicon/master/all/${COUNTRY_ISO[user.country]}/256.png`
     : null;
-  const bars = useMemo(() => BAR_HEIGHTS, []);
 
   const startPlay = async () => {
     const audio = audioRef.current;
@@ -120,7 +118,7 @@ export default function VoiceScrutCard({
       {showUser && (
         <div className="flex flex-col items-center gap-2">
           {/* Avatar with play ring */}
-          <div className="relative">
+          <button type="button" onClick={onAvatarClick} aria-label={`View ${user.display_name} profile`} className="relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
             <div
               className={cn(
                 'w-24 h-24 rounded-full overflow-hidden border-2 transition-all duration-300',
@@ -136,7 +134,7 @@ export default function VoiceScrutCard({
                 <span className="absolute inset-[-10px] rounded-full border border-white/10 animate-ping" style={{ animationDuration: '1.8s' }} />
               </>
             )}
-          </div>
+          </button>
 
           {/* Name */}
           <div className="text-center">
@@ -155,8 +153,8 @@ export default function VoiceScrutCard({
         </div>
       )}
 
-      {/* Waveform + controls row */}
-      <div className="flex items-center gap-3">
+      {/* Playback control and timestamps */}
+      <div className="flex items-center justify-center gap-3">
         {/* Play/pause button */}
         <button
           type="button"
@@ -170,32 +168,10 @@ export default function VoiceScrutCard({
           {playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
         </button>
 
-        {/* Waveform bars + time */}
-        <div className="flex-1 min-w-0">
-          <div className="flex h-10 items-center gap-[2px]" aria-label="Voice waveform">
-            {bars.map((height, i) => (
-              <span
-                key={i}
-                className={cn(
-                  'w-[3px] rounded-full transition-colors duration-100 shrink-0',
-                  i / bars.length < progress ? 'bg-white/90' : 'bg-white/18',
-                  playing && i / bars.length >= progress && 'waveform-bar',
-                )}
-                style={{
-                  height,
-                  animationDelay: playing ? `${(i % 8) * 0.09}s` : undefined,
-                }}
-              />
-            ))}
-          </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="font-mono text-[10px] tabular-nums text-white/35">
-              {formatDuration(Math.floor(currentTime))}
-            </span>
-            <span className="font-mono text-[10px] tabular-nums text-white/25">
-              {formatDuration(Math.floor(total))}
-            </span>
-          </div>
+        <div className="flex items-center gap-2 font-mono text-[10px] tabular-nums text-white/35">
+          <span>{formatDuration(Math.floor(currentTime))}</span>
+          <span className="text-white/20">/</span>
+          <span className="text-white/25">{formatDuration(Math.floor(total))}</span>
         </div>
       </div>
     </div>

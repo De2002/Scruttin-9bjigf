@@ -6,7 +6,7 @@ import TextReveal from './TextReveal';
 import VoiceScrutCard from './VoiceScrutCard';
 import ResonatesButton from './ResonatesButton';
 import ReportModal from './ReportModal';
-import { Flag } from 'lucide-react';
+import { Flag, UserRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
@@ -68,6 +68,7 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
           audioUrl={scrut.audio_url}
           autoPlay={autoPlayVoice}
           showUser
+          onAvatarClick={() => onAvatarClick?.(scrut)}
         />
         {/* Bottom row: clearly visible resonate, time, report */}
         <div className="flex items-center justify-between mt-5">
@@ -77,6 +78,9 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
             initialResonated={scrut.resonated_by_me ?? false}
             size="md"
           />
+          <button type="button" onClick={() => onAvatarClick?.(scrut)} aria-label={`View ${scrut.user.display_name} profile`} className="p-1.5 rounded-lg text-white/35 hover:text-white/75 transition-colors">
+            <UserRound size={15} />
+          </button>
           <div className="flex items-center gap-2.5">
             <span className="text-white/40 text-[13px] font-medium">{timeAgo(scrut.created_at)}</span>
             {user && (
@@ -156,6 +160,9 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
           initialResonated={scrut.resonated_by_me ?? false}
           size="md"
         />
+        <button type="button" onClick={() => onAvatarClick?.(scrut)} aria-label={`View ${scrut.user.display_name} profile`} className="p-1.5 rounded-lg text-white/35 hover:text-white/75 transition-colors">
+          <UserRound size={15} />
+        </button>
         <div className="flex items-center gap-2.5">
           <span className="text-white/40 text-[13px] font-medium">{timeAgo(scrut.created_at)}</span>
           {user && (
