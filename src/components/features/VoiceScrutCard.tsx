@@ -142,14 +142,7 @@ export default function VoiceScrutCard({
             {location && <p className="text-white/35 text-xs mt-0.5">{location}</p>}
           </div>
 
-          {/* Country map (small, above waveform) */}
-          {mapUrl && (
-            <img
-              src={mapUrl}
-              alt={user.country}
-              className="h-8 w-8 object-contain opacity-50"
-            />
-          )}
+
         </div>
       )}
 
@@ -161,11 +154,14 @@ export default function VoiceScrutCard({
           onClick={togglePlay}
           aria-label={playing ? 'Pause voice Scrut' : 'Play voice Scrut'}
           className={cn(
-            'shrink-0 flex h-11 w-11 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70',
-            playing ? 'border-white/40 bg-white/15 text-white' : 'border-white/15 bg-white/7 text-white/60 hover:bg-white/12 hover:text-white',
+            'relative shrink-0 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70',
+            playing ? 'border-white/50 bg-white/15 text-white' : 'border-white/15 bg-white/7 text-white/60 hover:bg-white/12 hover:text-white',
           )}
         >
-          {playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
+          {mapUrl && <img src={mapUrl} alt="" aria-hidden className="absolute inset-0 size-full object-contain opacity-35" />}
+          <span className="relative z-10 flex size-8 items-center justify-center rounded-full bg-black/35 backdrop-blur-sm">
+            {playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
+          </span>
         </button>
 
         <div className="flex items-center gap-2 font-mono text-[10px] tabular-nums text-white/35">

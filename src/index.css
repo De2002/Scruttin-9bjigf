@@ -64,6 +64,11 @@
 }
 
 @layer utilities {
+  html.profile-sheet-active nav[aria-label="Primary navigation"] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   /* Font family utilities bound to user preference via CSS var */
   .font-sans-app {
     font-family: var(--scruttin-font);
