@@ -40,6 +40,7 @@ export interface Scrut {
   created_at: string;
   resonate_count?: number;
   resonated_by_me?: boolean;
+  attachment_url?: string;
 }
 
 export type AmbientEnvironment =

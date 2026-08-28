@@ -1,8 +1,8 @@
 /**
- * ComposeModal — contextual composer with live topics from DB.
+ * ComposeModal — contextual composer with live topics from DB + GIF/sticker attachment.
  */
-import { useState, useEffect } from 'react';
-import { X, Mic2, Type, ArrowRight, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Mic2, Type, ArrowRight, Loader2, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,7 +21,6 @@ interface Props {
 }
 
 const DEFAULT_TOPICS = ['Life', 'Relationships', 'Work', 'Money', 'Technology', 'Culture', 'Family', 'Society', 'Fun'];
-const INPUT_CLS = 'w-full bg-[rgba(255,255,255,0.07)] border border-[rgba(255,255,255,0.12)] rounded-xl px-3 py-2.5 text-white text-sm placeholder-[rgba(255,255,255,0.25)] focus:outline-none focus:border-[rgba(255,255,255,0.28)] transition-colors';
 
 export default function ComposeModal({ onClose, defaultMode = 'question', contextConversation, onPosted }: Props) {
   const { user } = useAuth();
@@ -37,7 +36,12 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [topics, setTopics] = useState<string[]>(DEFAULT_TOPICS);
 
-  // Load topics from DB (admins add topics that appear here)
+  // Attachment state
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const attachInputRef = useRef<HTMLInputElement>(null);
+
+  // Load topics from DB
   useEffect(() => {
     supabase.from('topics').select('label').order('sort_order').then(({ data }) => {
       if (data && data.length > 0) {
@@ -57,6 +61,24 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
       : mode === 'statement' ? 'Make a statement'
       : 'Say it';
 
+  const handleAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 4 * 1024 * 1024) { toast.error('Attachment must be under 4 MB'); return; }
+    setAttachmentUploading(true);
+    const ext = file.name.split('.').pop() ?? 'gif';
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { data, error } = await supabase.storage
+      .from('scrut-attachments')
+      .upload(path, file, { contentType: file.type, upsert: false });
+    setAttachmentUploading(false);
+    if (error) { toast.error(error.message); return; }
+    const { data: { publicUrl } } = supabase.storage.from('scrut-attachments').getPublicUrl(data.path);
+    setAttachmentUrl(publicUrl);
+    // Clear input so same file can be re-selected if user removes and re-adds
+    if (attachInputRef.current) attachInputRef.current.value = '';
+  };
+
   const handleSubmit = async () => {
     if (!user) return toast.error('Sign in to post');
     if (format === 'text' && !body.trim()) return;
@@ -64,25 +86,24 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
 
     setSubmitting(true);
 
+    const base = {
+      user_id: user.id,
+      type: format,
+      text: format === 'text' ? body.trim() : null,
+      audio_url: format === 'voice' ? audioUrl : null,
+      audio_duration: format === 'voice' ? audioDuration : null,
+      attachment_url: attachmentUrl ?? null,
+    };
+
     if (isResponse && contextConversation) {
       const { error } = await supabase.from('scruts').insert({
+        ...base,
         conversation_id: contextConversation.id,
-        user_id: user.id,
-        type: format,
-        text: format === 'text' ? body.trim() : null,
-        audio_url: format === 'voice' ? audioUrl : null,
-        audio_duration: format === 'voice' ? audioDuration : null,
         position: contextConversation.type === 'statement' ? position : null,
       });
       if (error) { toast.error(error.message); setSubmitting(false); return; }
     } else if (mode === 'open') {
-      const { error } = await supabase.from('scruts').insert({
-        user_id: user.id,
-        type: format,
-        text: format === 'text' ? body.trim() : null,
-        audio_url: format === 'voice' ? audioUrl : null,
-        audio_duration: format === 'voice' ? audioDuration : null,
-      });
+      const { error } = await supabase.from('scruts').insert(base);
       if (error) { toast.error(error.message); setSubmitting(false); return; }
     } else {
       const { error } = await supabase.from('conversations').insert({
@@ -234,7 +255,7 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
               ))}
             </div>
 
-            {/* Text input */}
+            {/* Text input + attachment */}
             {format === 'text' && (
               <>
                 <textarea
@@ -247,6 +268,42 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
                 />
                 <div className="flex items-center justify-between mt-1 mb-4">
                   <span className="text-white/25 text-[10px]">{body.length} / 300</span>
+                  {/* Tiny attachment button — secondary, unobtrusive */}
+                  <div className="flex items-center gap-2">
+                    {attachmentUploading && (
+                      <Loader2 size={11} className="text-white/25 animate-spin" />
+                    )}
+                    {attachmentUrl && (
+                      <div className="flex items-center gap-1.5">
+                        <img
+                          src={attachmentUrl}
+                          alt="attachment preview"
+                          className="w-7 h-7 rounded-md object-cover opacity-70"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setAttachmentUrl(null)}
+                          className="text-white/20 hover:text-white/50 text-[10px] transition-colors"
+                          aria-label="Remove attachment"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                    {!attachmentUrl && !attachmentUploading && (
+                      <label className="cursor-pointer flex items-center gap-1 text-white/20 hover:text-white/40 transition-colors" title="Attach a GIF or sticker">
+                        <Paperclip size={12} />
+                        <span className="text-[10px]">GIF</span>
+                        <input
+                          ref={attachInputRef}
+                          type="file"
+                          accept="image/gif,image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={handleAttachment}
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
               </>
             )}

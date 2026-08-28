@@ -79,7 +79,7 @@ export default function ConversationPage() {
 
     const { data: scrutData } = await supabase
       .from('scruts')
-      .select('*, user:user_id(id, display_name, avatar_url, country, city, bio, website, twitter, instagram)')
+      .select('*, user:user_id(id, display_name, avatar_url, country, city, bio, website, twitter, instagram), attachment_url')
       .eq('conversation_id', id)
       .eq('is_reported', false)
       .order('created_at', { ascending: true });
@@ -97,6 +97,7 @@ export default function ConversationPage() {
         resonate_count: (s.resonate_count as number) ?? 0,
         resonated_by_me: false,
         created_at: s.created_at as string,
+        attachment_url: s.attachment_url as string | undefined,
       }))
     );
 
@@ -104,6 +105,40 @@ export default function ConversationPage() {
   }, [id]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // 30-second polling — refresh conversation counts + resonate counts
+  useEffect(() => {
+    if (!id) return;
+    const timer = setInterval(async () => {
+      // Refresh conversation counts
+      const { data: conv } = await supabase
+        .from('conversations')
+        .select('scrut_count, country_count')
+        .eq('id', id)
+        .single();
+      if (conv) {
+        setConversation(prev => prev
+          ? { ...prev, scrut_count: (conv as {scrut_count:number;country_count:number}).scrut_count, country_count: (conv as {scrut_count:number;country_count:number}).country_count }
+          : prev
+        );
+      }
+      // Refresh resonate counts on scruts
+      setScruts(prevScruts => {
+        if (prevScruts.length === 0) return prevScruts;
+        const ids = prevScruts.map(s => s.id);
+        supabase.from('scruts').select('id, resonate_count').in('id', ids)
+          .then(({ data }) => {
+            if (!data) return;
+            setScruts(prev => prev.map(s => {
+              const u = (data as {id:string;resonate_count:number}[]).find(d => d.id === s.id);
+              return u ? { ...s, resonate_count: u.resonate_count } : s;
+            }));
+          });
+        return prevScruts;
+      });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [id]);
 
   const isPinned = pinned.includes(conversation?.id ?? '');
   const scrut = scruts[index];

@@ -103,6 +103,41 @@ export default function StreamPage() {
 
   useEffect(() => { loadStream(); }, []);
 
+  // 30-second polling — refresh counts + resonate counts without full reload
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      if (streamItems.length === 0) return;
+      const convIds = [...new Set(streamItems.map(i => i.conversation.id))];
+      const { data: convData } = await supabase
+        .from('conversations')
+        .select('id, scrut_count, country_count')
+        .in('id', convIds);
+      if (convData) {
+        setStreamItems(prev => prev.map(item => {
+          const u = (convData as { id: string; scrut_count: number; country_count: number }[]).find(d => d.id === item.conversation.id);
+          if (!u) return item;
+          return { ...item, conversation: { ...item.conversation, scrut_count: u.scrut_count, country_count: u.country_count } };
+        }));
+      }
+      const scrutIds = streamItems.filter(i => i.scrut).map(i => i.scrut!.id);
+      if (scrutIds.length > 0) {
+        const { data: sData } = await supabase
+          .from('scruts')
+          .select('id, resonate_count')
+          .in('id', scrutIds);
+        if (sData) {
+          setStreamItems(prev => prev.map(item => {
+            if (!item.scrut) return item;
+            const u = (sData as { id: string; resonate_count: number }[]).find(s => s.id === item.scrut!.id);
+            if (!u) return item;
+            return { ...item, scrut: { ...item.scrut!, resonate_count: u.resonate_count } };
+          }));
+        }
+      }
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [streamItems]);
+
   const loadStream = async () => {
     setLoadingStream(true);
 
@@ -127,7 +162,7 @@ export default function StreamPage() {
     const convIds = conversations.map((c: Record<string, unknown>) => c.id as string);
     const { data: scruts } = await supabase
       .from('scruts')
-      .select(`id, conversation_id, type, text, audio_url, audio_duration, position, resonate_count, created_at,
+      .select(`id, conversation_id, type, text, audio_url, audio_duration, position, resonate_count, attachment_url, created_at,
         user:user_id(id, display_name, avatar_url, country, city, bio, website, twitter, instagram)`)
       .in('conversation_id', convIds)
       .eq('is_reported', false)
@@ -149,6 +184,7 @@ export default function StreamPage() {
         resonate_count: (s.resonate_count as number) ?? 0,
         resonated_by_me: false,
         created_at: s.created_at as string,
+        attachment_url: s.attachment_url as string | undefined,
       });
     });
 

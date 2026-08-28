@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Scrut } from '@/types';
 import { cn, timeAgo } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
@@ -50,6 +50,82 @@ function getMapUrl(country: string | undefined): string | null {
 function wordCount(text: string | null | undefined): number {
   if (!text) return 0;
   return text.trim().split(/\s+/).length;
+}
+
+/** ✦ peek / ↑ tuck — inline attachment reveal */
+function PeekAttachment({ url }: { url: string }) {
+  const [wiggled, setWiggled] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [tucking, setTucking] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  // One-time wiggle on mount
+  useEffect(() => {
+    const timer = window.setTimeout(() => setWiggled(true), 80);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const isGif = url.toLowerCase().includes('.gif') || url.toLowerCase().includes('gif');
+
+  const handleTap = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    if (open) {
+      // Tuck away
+      setTucking(true);
+      window.setTimeout(() => {
+        setOpen(false);
+        setTucking(false);
+        setVisible(false);
+      }, 190);
+    } else {
+      setOpen(true);
+      // Small delay so DOM renders before animating
+      window.setTimeout(() => setVisible(true), 10);
+    }
+  };
+
+  return (
+    <div className="mt-3 select-none" data-no-swipe>
+      {/* ✦ peek tab */}
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={handleTap}
+        onTouchEnd={handleTap}
+        className={cn(
+          'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium tracking-wide transition-colors',
+          'bg-white/5 border border-white/8 text-white/35 hover:text-white/55 hover:bg-white/8',
+          wiggled && !open && 'peek-wiggle-once'
+        )}
+        style={{ transformOrigin: 'left center' }}
+        aria-label={open ? 'Tuck attachment' : 'Peek at attachment'}
+      >
+        <span className="text-[10px]">✦</span>
+        <span>{open ? '↑ tuck' : 'peek'}</span>
+      </button>
+
+      {/* Attachment — slides down when open */}
+      {open && (
+        <div
+          className={cn(
+            'mt-2 rounded-xl overflow-hidden',
+            visible && !tucking ? (isGif ? 'peek-reveal' : 'sticker-popin') : 'opacity-0',
+            tucking && 'peek-tuck'
+          )}
+          style={{ maxWidth: 240 }}
+        >
+          <img
+            src={url}
+            alt="attachment"
+            className="w-full h-auto rounded-xl object-contain"
+            style={{ maxHeight: 240, display: 'block' }}
+            draggable={false}
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ScrutCard({ scrut, showPosition, onRevealComplete, className, onAvatarClick, autoPlayVoice = false }: Props) {
@@ -152,8 +228,15 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
         </div>
       </div>
 
+      {/* ✦ peek attachment */}
+      {scrut.attachment_url && (
+        <div className="clear-both">
+          <PeekAttachment url={scrut.attachment_url} />
+        </div>
+      )}
+
       {/* Bottom row: clearly visible */}
-      <div className="clear-both mt-5 flex items-center justify-between">
+      <div className={cn('mt-5 flex items-center justify-between', !scrut.attachment_url && 'clear-both')}>
         <ResonatesButton
           scrutId={scrut.id}
           initialCount={scrut.resonate_count ?? 0}
