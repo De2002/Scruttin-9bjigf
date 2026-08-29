@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { Settings2, X, Music2 } from 'lucide-react';
 import { usePreferences } from '@/stores/preferencesStore';
-import { AMBIENT_CONFIGS } from '@/constants/ambients';
+import { AMBIENT_CONFIGS, COLOR_BACKGROUNDS } from '@/constants/ambients';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 
@@ -26,6 +26,7 @@ export default function AtmosphereControls() {
 
   const allAtmospheres = [
     ...AMBIENT_CONFIGS,
+    ...COLOR_BACKGROUNDS,
     ...customAtmospheres.map(a => ({ id: a.id, label: a.label, emoji: a.emoji, videoUrl: '', overlayOpacity: 0.65, overlayColor: '10,10,10', accentColor: '#fff' })),
   ];
 
@@ -89,7 +90,11 @@ export default function AtmosphereControls() {
                       : 'border-white/8 bg-white/5 text-white/50 hover:bg-white/8 hover:text-white/80'
                   )}
                 >
-                  <span className="text-xl leading-none">{cfg.emoji}</span>
+                  {cfg.id.startsWith('color-') ? (
+                    <span className="h-10 w-full rounded-xl border border-white/10" style={{ backgroundColor: `rgb(${cfg.overlayColor})` }} aria-hidden="true" />
+                  ) : (
+                    <span className="text-xl leading-none">{cfg.emoji}</span>
+                  )}
                   <span className="text-[11px] font-medium">{cfg.label}</span>
                 </button>
               ))}
