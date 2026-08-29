@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePreferences } from '@/stores/preferencesStore';
-import { getAmbientById, AMBIENT_CONFIGS } from '@/constants/ambients';
+import { getAmbientById, AMBIENT_CONFIGS, COLOR_BACKGROUNDS } from '@/constants/ambients';
 import { supabase } from '@/lib/supabase';
 
 interface CustomAtmosphere {
@@ -79,6 +79,11 @@ export default function AmbientBackground() {
   }
 
   const builtinConfig = getAmbientById(ambient);
+  const colorConfig = COLOR_BACKGROUNDS.find(c => c.id === ambient);
+
+  if (colorConfig) {
+    return <div className="fixed inset-0 z-0" style={{ backgroundColor: `rgb(${colorConfig.overlayColor})` }} />;
+  }
 
   if (ambient === 'off') {
     return <div className="fixed inset-0 z-0 bg-[#0a0a12]" />;

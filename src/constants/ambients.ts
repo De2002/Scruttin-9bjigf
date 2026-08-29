@@ -8,6 +8,20 @@ export interface AmbientConfig {
   accentColor: string;
 }
 
+export const COLOR_BACKGROUNDS: AmbientConfig[] = [
+  { id: 'color-blue', label: 'Harbor', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '42, 80, 106', accentColor: '#6bb9d8' },
+  { id: 'color-sky', label: 'Sky', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '107, 185, 216', accentColor: '#ffffff' },
+  { id: 'color-stone', label: 'Stone', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '108, 111, 106', accentColor: '#ffffff' },
+  { id: 'color-slate', label: 'Slate', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '82, 102, 98', accentColor: '#ffffff' },
+  { id: 'color-caramel', label: 'Caramel', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '183, 128, 76', accentColor: '#ffffff' },
+  { id: 'color-plum', label: 'Plum', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '44, 14, 32', accentColor: '#ffffff' },
+  { id: 'color-midnight', label: 'Midnight', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '25, 45, 61', accentColor: '#ffffff' },
+  { id: 'color-cream', label: 'Cream', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '248, 240, 220', accentColor: '#192d3d' },
+  { id: 'color-coffee', label: 'Coffee', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '64, 51, 41', accentColor: '#ffffff' },
+  { id: 'color-cyan', label: 'Cyan', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '8, 174, 208', accentColor: '#ffffff' },
+  { id: 'color-black', label: 'Black', emoji: '', videoUrl: '', overlayOpacity: 1, overlayColor: '0, 0, 0', accentColor: '#ffffff' },
+];
+
 export const AMBIENT_CONFIGS: AmbientConfig[] = [
   {
     id: 'off',
