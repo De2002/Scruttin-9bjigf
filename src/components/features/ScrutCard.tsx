@@ -55,9 +55,10 @@ function wordCount(text: string | null | undefined): number {
 /** ✦ peek / ↑ tuck — inline attachment reveal */
 function PeekAttachment({ url }: { url: string }) {
   const [wiggled, setWiggled] = useState(false);
-  const [open, setOpen] = useState(false);
+  // Attachments are visible on text scruts immediately; the control can tuck them away.
+  const [open, setOpen] = useState(true);
   const [tucking, setTucking] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const btnRef = useRef<HTMLButtonElement>(null);
 
   // One-time wiggle on mount
