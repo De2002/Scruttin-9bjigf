@@ -291,9 +291,9 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
                       </div>
                     )}
                     {!attachmentUrl && !attachmentUploading && (
-                      <label className="cursor-pointer flex items-center gap-1 text-white/20 hover:text-white/40 transition-colors" title="Attach a GIF or sticker">
-                        <Paperclip size={12} />
-                        <span className="text-[10px]">GIF</span>
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-2.5 py-1.5 text-white/75 hover:bg-white/15 hover:text-white transition-colors" title="Attach a GIF or sticker">
+                        <Paperclip size={14} />
+                        <span className="text-xs font-medium">Add GIF</span>
                         <input
                           ref={attachInputRef}
                           type="file"
