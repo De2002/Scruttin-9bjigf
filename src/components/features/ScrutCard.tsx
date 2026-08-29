@@ -92,7 +92,6 @@ function PeekAttachment({ url }: { url: string }) {
         ref={btnRef}
         type="button"
         onClick={handleTap}
-        onTouchEnd={handleTap}
         className={cn(
           'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium tracking-wide transition-colors',
           'bg-white/5 border border-white/8 text-white/35 hover:text-white/55 hover:bg-white/8',
