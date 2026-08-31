@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Mic2, User } from 'lucide-react';
+import { Layers3, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Wavy icon for Dive
@@ -30,7 +30,7 @@ function SLogoIcon({ size = 20, active = false }: { size?: number; active?: bool
 const NAV_ITEMS = [
   { path: '/stream', label: 'Stream', icon: 'slogo' },
   { path: '/dive', label: 'Dive', icon: 'waves' },
-  { path: '/tagged', label: 'Tagged', icon: 'mic' },
+  { path: '/spaces', label: 'Spaces', icon: 'spaces' },
   { path: '/me', label: 'Me', icon: 'user' },
 ];
 
@@ -57,7 +57,7 @@ export default function BottomNav() {
                 <span className={cn('transition-all duration-200', active && 'drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]')}>
                   {icon === 'slogo' && <SLogoIcon size={20} active={active} />}
                   {icon === 'waves' && <WavesIcon size={20} strokeWidth={sw} />}
-                  {icon === 'mic' && <Mic2 size={20} strokeWidth={sw} />}
+                  {icon === 'spaces' && <Layers3 size={20} strokeWidth={sw} />}
                   {icon === 'user' && <User size={20} strokeWidth={sw} />}
                 </span>
                 <span className={cn('text-[10px] font-medium tracking-wide transition-all', active ? 'opacity-100' : 'opacity-60')}>

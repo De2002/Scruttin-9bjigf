@@ -14,7 +14,7 @@ import DivePage from '@/pages/DivePage';
 import ScrutinAsksPage from '@/pages/ScrutinAsksPage';
 import FromTheCrowdPage from '@/pages/FromTheCrowdPage';
 import StatementsPage from '@/pages/StatementsPage';
-import TaggedPage from '@/pages/TaggedPage';
+import SpacesPage from '@/pages/SpacesPage';
 import MePage from '@/pages/MePage';
 import ConversationPage from '@/pages/ConversationPage';
 import AdminPage from '@/pages/admin/AdminPage';
@@ -84,8 +84,9 @@ export default function App() {
             <Route path="/dive/statements" element={<AppShell><StatementsPage /></AppShell>} />
             <Route path="/conversation/:id" element={<AppShell><ConversationPage /></AppShell>} />
             <Route path="/questions/:id" element={<AppShell><ConversationPage /></AppShell>} />
-            <Route path="/tagged" element={<AppShell><TaggedPage /></AppShell>} />
-            <Route path="/open" element={<Navigate to="/tagged" replace />} />
+            <Route path="/spaces" element={<AppShell><SpacesPage /></AppShell>} />
+            <Route path="/tagged" element={<Navigate to="/spaces" replace />} />
+            <Route path="/open" element={<Navigate to="/spaces" replace />} />
 
             {/* Auth required */}
             <Route path="/me" element={<AppShell><Protected><MePage /></Protected></AppShell>} />
