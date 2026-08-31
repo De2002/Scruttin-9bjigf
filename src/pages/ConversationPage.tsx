@@ -242,6 +242,7 @@ export default function ConversationPage() {
                 showPosition={conversation.type === 'statement'}
                 onAvatarClick={(s) => setDetailScrut(s)}
                 autoPlayVoice={autoPlayVoice}
+                contextText={conversation.body}
               />
             )}
             {scruts.length > 1 && (

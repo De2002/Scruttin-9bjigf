@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -48,8 +49,8 @@ export default function ReportModal({ scrutId, onClose }: Props) {
     setTimeout(onClose, 1800);
   };
 
-  return (
-    /* Full-screen backdrop — z-[500] so it's above BottomNav (z-10) but below toasts */
+  return createPortal(
+    /* Full-screen backdrop — rendered at document level so card transforms cannot clip it. */
     <div
       className="fixed inset-0 z-[500] flex items-end justify-center"
       data-no-swipe
@@ -127,6 +128,7 @@ export default function ReportModal({ scrutId, onClose }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
