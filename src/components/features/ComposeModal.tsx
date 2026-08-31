@@ -175,7 +175,7 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
   return (
     <>
       {/* z-[400] — above BottomNav (z-10) and content, below report modal (z-[500]) */}
-      <div className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center p-0 sm:p-4" data-no-swipe>
+      <div className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center p-0 sm:p-4" data-no-swipe data-sheet-overlay>
         <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
         <div
           className="relative glass max-h-[calc(100dvh-0.5rem)] w-full overflow-y-auto overscroll-contain rounded-t-3xl sm:max-w-md sm:rounded-3xl"
