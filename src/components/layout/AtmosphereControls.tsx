@@ -31,7 +31,7 @@ export default function AtmosphereControls() {
   ];
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" data-atmosphere-controls data-no-swipe>
       {/* Music toggle */}
       <button
         onClick={() => setMusicEnabled(!musicEnabled)}

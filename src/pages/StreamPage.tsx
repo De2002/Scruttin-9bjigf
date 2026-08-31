@@ -256,17 +256,21 @@ export default function StreamPage() {
 
   const onTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
-    touchStartY.current = touch.clientY;
     const target = e.target instanceof Element ? e.target : null;
     touchStartedInAtmosphere.current = Boolean(
-      target?.closest('[data-atmosphere-controls]')
+      target?.closest('[data-atmosphere-controls], [data-no-swipe]')
       || (touch.clientY <= 100 && touch.clientX >= window.innerWidth - 180)
     );
+    if (touchStartedInAtmosphere.current) return;
+    touchStartY.current = touch.clientY;
   };
   const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartedInAtmosphere.current) {
+      touchStartedInAtmosphere.current = false;
+      return;
+    }
     const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (dy < -SWIPE_THRESHOLD && !touchStartedInAtmosphere.current) advance();
-    touchStartedInAtmosphere.current = false;
+    if (dy < -SWIPE_THRESHOLD) advance();
   };
   const onMouseDown = (e: React.MouseEvent) => { mouseStartY.current = e.clientY; isDragging.current = true; };
   const onMouseUp = (e: React.MouseEvent) => {

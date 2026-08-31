@@ -157,9 +157,6 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
             initialResonated={scrut.resonated_by_me ?? false}
             size="md"
           />
-          <button type="button" onClick={() => onAvatarClick?.(scrut)} aria-label={`View ${scrut.user.display_name} profile`} className="p-1.5 rounded-lg text-white/35 hover:text-white/75 transition-colors">
-            <UserRound size={15} />
-          </button>
           <div className="flex items-center gap-2.5">
             <span className="text-white/40 text-[13px] font-medium">{timeAgo(scrut.created_at)}</span>
             {user && (

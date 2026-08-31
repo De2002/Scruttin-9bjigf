@@ -1,13 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Globe, Pin, Mic2 } from 'lucide-react';
+import { ArrowLeft, Pin } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn, formatCount } from '@/lib/utils';
 import { useStream } from '@/stores/streamContext';
 import { usePreferences } from '@/stores/preferencesStore';
 import ScrutCard from '@/components/features/ScrutCard';
 import ScrutDetailSheet from '@/components/features/ScrutDetailSheet';
-import StatementVote from '@/components/features/StatementVote';
 import ComposeModal from '@/components/features/ComposeModal';
 import AtmosphereControls from '@/components/layout/AtmosphereControls';
 import type { ConversationStarter, Scrut } from '@/types';
@@ -198,48 +197,28 @@ export default function ConversationPage() {
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden pb-16">
-      {/* Question strip */}
-      <div className="shrink-0 z-30 relative">
-        <div className="flex items-center justify-between px-4 pt-safe pt-3 pb-2">
+      {/* Compact detail toolbar; the conversation prompt is already represented by the Scrut card below. */}
+      <div className="shrink-0 z-30 relative flex items-center justify-between px-4 pt-safe pt-3 pb-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-white/40 hover:text-white/80 transition-colors text-sm"
+          onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
+        >
+          <ArrowLeft size={15} /><span className="text-xs">Back</span>
+        </button>
+        <div className="flex items-center gap-2" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
+          <AtmosphereControls />
           <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-white/40 hover:text-white/80 transition-colors text-sm"
-            onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
+            onClick={() => togglePin(conversation.id)}
+            className={cn(
+              'flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border transition-all',
+              isPinned ? 'text-amber-300 border-amber-400/40 bg-amber-400/10' : 'text-white/25 border-white/10 hover:text-white/50'
+            )}
           >
-            <ArrowLeft size={15} /><span className="text-xs">Back</span>
+            <Pin size={10} fill={isPinned ? 'currentColor' : 'none'} />
+            {isPinned ? 'Pinned' : 'Pin'}
           </button>
-          <div className="flex items-center gap-2" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-            <AtmosphereControls />
-            <button
-              onClick={() => togglePin(conversation.id)}
-              className={cn(
-                'flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border transition-all',
-                isPinned ? 'text-amber-300 border-amber-400/40 bg-amber-400/10' : 'text-white/25 border-white/10 hover:text-white/50'
-              )}
-            >
-              <Pin size={10} fill={isPinned ? 'currentColor' : 'none'} />
-              {isPinned ? 'Pinned' : 'Pin'}
-            </button>
-          </div>
         </div>
-
-        <div className="px-5 pb-3">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/30 mb-1.5">
-            {conversation.is_platform
-              ? `Scruttin Asks · ${conversation.topic}`
-              : `${conversation.topic} · ${conversation.user.display_name}`}
-          </p>
-          <p className={cn('font-serif text-white/90 leading-[1.45]', conversation.type === 'statement' ? 'italic text-[15px]' : 'text-[15px]')}>
-            {conversation.type === 'statement' ? `"${conversation.body}"` : conversation.body}
-          </p>
-          {conversation.type === 'statement' && <div className="mt-2"><StatementVote compact /></div>}
-          <div className="flex items-center gap-3 mt-2 text-white/25 text-[10px]">
-            <span className="flex items-center gap-1"><Mic2 size={10} />{formatCount(conversation.scrut_count)} scruts</span>
-            <span className="flex items-center gap-1"><Globe size={10} />{conversation.country_count} countries</span>
-            <span className="ml-auto">{scruts.length > 0 ? `${index + 1} / ${scruts.length}` : '—'}</span>
-          </div>
-        </div>
-        <div className="mx-5 border-t border-white/10" />
       </div>
 
       {/* Scrut zone */}
