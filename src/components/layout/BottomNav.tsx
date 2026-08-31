@@ -30,7 +30,7 @@ function SLogoIcon({ size = 20, active = false }: { size?: number; active?: bool
 const NAV_ITEMS = [
   { path: '/stream', label: 'Stream', icon: 'slogo' },
   { path: '/dive', label: 'Dive', icon: 'waves' },
-  { path: '/open', label: 'Open', icon: 'mic' },
+  { path: '/tagged', label: 'Tagged', icon: 'mic' },
   { path: '/me', label: 'Me', icon: 'user' },
 ];
 
