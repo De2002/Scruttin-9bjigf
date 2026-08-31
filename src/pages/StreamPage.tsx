@@ -94,6 +94,7 @@ export default function StreamPage() {
 
   const advancing = useRef(false);
   const touchStartY = useRef(0);
+  const touchStartedInAtmosphere = useRef(false);
   const mouseStartY = useRef(0);
   const isDragging = useRef(false);
 
@@ -253,10 +254,19 @@ export default function StreamPage() {
     }, 360);
   }, [index, streamItems.length, current, currentSponsoredAd, onScrutViewed, trackEvent]);
 
-  const onTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
+  const onTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartY.current = touch.clientY;
+    const target = e.target instanceof Element ? e.target : null;
+    touchStartedInAtmosphere.current = Boolean(
+      target?.closest('[data-atmosphere-controls]')
+      || (touch.clientY <= 100 && touch.clientX >= window.innerWidth - 180)
+    );
+  };
   const onTouchEnd = (e: React.TouchEvent) => {
     const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (dy < -SWIPE_THRESHOLD) advance();
+    if (dy < -SWIPE_THRESHOLD && !touchStartedInAtmosphere.current) advance();
+    touchStartedInAtmosphere.current = false;
   };
   const onMouseDown = (e: React.MouseEvent) => { mouseStartY.current = e.clientY; isDragging.current = true; };
   const onMouseUp = (e: React.MouseEvent) => {
