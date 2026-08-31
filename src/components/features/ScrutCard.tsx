@@ -16,6 +16,7 @@ interface Props {
   className?: string;
   onAvatarClick?: (scrut: Scrut) => void;
   autoPlayVoice?: boolean;
+  contextText?: string;
 }
 
 const positionLabel: Record<string, string> = {
@@ -129,7 +130,7 @@ function PeekAttachment({ url }: { url: string }) {
   );
 }
 
-export default function ScrutCard({ scrut, showPosition, onRevealComplete, className, onAvatarClick, autoPlayVoice = false }: Props) {
+export default function ScrutCard({ scrut, showPosition, onRevealComplete, className, onAvatarClick, autoPlayVoice = false, contextText }: Props) {
   const { user } = useAuth();
   const [reportOpen, setReportOpen] = useState(false);
   const mapUrl = getMapUrl(scrut.user.country);
@@ -146,6 +147,7 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
           autoPlay={autoPlayVoice}
           showUser
           onAvatarClick={() => onAvatarClick?.(scrut)}
+          contextText={contextText}
         />
         {/* Bottom row: clearly visible resonate, time, report */}
         <div className="flex items-center justify-between mt-5">
@@ -213,6 +215,8 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
         </div>
 
         <div style={{ position: 'relative', zIndex: 1 }}>
+          <p className="mb-1 text-sm font-semibold text-white/80">{scrut.user.display_name} <span className="font-normal text-white/45">on</span></p>
+          {contextText && <p className="mb-3 font-serif text-[17px] italic leading-7 text-white/55">“{contextText}”</p>}
           {showPosition && scrut.position && (
             <p className={cn('text-xs font-medium mb-1.5', positionColor[scrut.position])}>
               {positionLabel[scrut.position]}

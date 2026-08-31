@@ -477,6 +477,7 @@ function ScrutView({
         showPosition={conversation.type === 'statement'}
         onAvatarClick={onAvatarClick}
         autoPlayVoice={autoPlayVoice}
+        contextText={conversation.body}
       />
       <div className="mt-5 flex justify-center">
         <span className="text-white/20 text-[10px] tracking-widest">{streamIndex + 1} · · ·</span>
