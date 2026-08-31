@@ -53,6 +53,7 @@ export default function ReportModal({ scrutId, onClose }: Props) {
     <div
       className="fixed inset-0 z-[500] flex items-end justify-center"
       data-no-swipe
+      data-sheet-overlay
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />

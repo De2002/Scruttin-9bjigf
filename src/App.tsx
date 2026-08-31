@@ -83,6 +83,7 @@ export default function App() {
             <Route path="/dive/crowd" element={<AppShell><FromTheCrowdPage /></AppShell>} />
             <Route path="/dive/statements" element={<AppShell><StatementsPage /></AppShell>} />
             <Route path="/conversation/:id" element={<AppShell><ConversationPage /></AppShell>} />
+            <Route path="/conversations/:id" element={<AppShell><ConversationPage /></AppShell>} />
             <Route path="/questions/:id" element={<AppShell><ConversationPage /></AppShell>} />
             <Route path="/spaces" element={<AppShell><SpacesPage /></AppShell>} />
             <Route path="/tagged" element={<Navigate to="/spaces" replace />} />
