@@ -16,6 +16,7 @@ interface Props {
   onPlaybackStart?: () => void;
   showUser?: boolean;
   onAvatarClick?: () => void;
+  contextText?: string;
 }
 
 const COUNTRY_ISO: Record<string, string> = {
@@ -31,7 +32,7 @@ const COUNTRY_ISO: Record<string, string> = {
 
 export default function VoiceScrutCard({
   duration, user, scrutId, audioUrl, className, autoPlay = false,
-  onPlaybackEnd, onPlaybackStart, showUser = true, onAvatarClick,
+  onPlaybackEnd, onPlaybackStart, showUser = true, onAvatarClick, contextText,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -111,7 +112,8 @@ export default function VoiceScrutCard({
   }, [autoPlay, autoplayed, audioUrl]);
 
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
+    <div className={cn('relative flex flex-col gap-4', className)}>
+      {mapUrl && <img src={mapUrl} alt="" aria-hidden className="pointer-events-none absolute right-0 top-0 size-28 object-contain opacity-[0.08]" />}
       {audioUrl && <audio ref={audioRef} src={audioUrl} preload="metadata" />}
 
       {/* Profile section */}
@@ -136,10 +138,11 @@ export default function VoiceScrutCard({
             )}
           </button>
 
-          {/* Name */}
+          {/* Name and context */}
           <div className="text-center">
-            <p className="text-white font-semibold text-[15px]">{user.display_name}</p>
-            {location && <p className="text-white/35 text-xs mt-0.5">{location}</p>}
+            <p className="text-white font-semibold text-[15px]">{user.display_name} <span className="font-normal text-white/45">on</span></p>
+            {contextText && <p className="mt-2 max-w-xs font-serif text-[17px] italic leading-7 text-white/55">“{contextText}”</p>}
+            {location && <p className="mt-1 text-xs text-white/35">{location}</p>}
           </div>
 
 
@@ -158,7 +161,7 @@ export default function VoiceScrutCard({
             playing ? 'border-white/50 bg-white/15 text-white' : 'border-white/15 bg-white/7 text-white/60 hover:bg-white/12 hover:text-white',
           )}
         >
-          {mapUrl && <img src={mapUrl} alt="" aria-hidden className="absolute inset-0 size-full object-contain opacity-35" />}
+
           <span className="relative z-10 flex size-8 items-center justify-center rounded-full bg-black/35 backdrop-blur-sm">
             {playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
           </span>
