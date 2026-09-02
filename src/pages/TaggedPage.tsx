@@ -1,207 +1,239 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
-  MessageSquare,
-  Repeat2,
-  Heart,
-  Bookmark,
-  Share2,
   Search,
   Sparkles,
-  Mic,
-  MicOff,
-  Send,
-  UserPlus,
-  UserCheck,
-  RefreshCw,
-  SlidersHorizontal,
-  Globe,
-  Play,
-  Pause,
-  Volume2,
+  Image as ImageIcon,
+  Smile,
+  Sticker as StickerIcon,
   X,
-  ExternalLink,
+  MapPin,
+  Send,
+  RefreshCw,
+  Camera,
   ChevronRight,
-  Headphones,
+  Users,
+  Upload,
+  Bookmark,
+  BarChart2,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useTagged, TaggedFeedPost } from '@/stores/taggedContext';
+import { useTagged } from '@/stores/taggedContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { MOCK_CONVERSATIONS, MOCK_SCRUTS, OPEN_SCRUTS, MOCK_USERS } from '@/constants/mockData';
-import type { User, Scrut, ConversationStarter } from '@/types';
+import {
+  TaggedPostItem,
+  TaggedSticker,
+  TaggedPoll,
+} from '@/constants/taggedData';
+import type { User } from '@/types';
 import UserAvatar from '@/components/features/UserAvatar';
+import TaggedPostCard from '@/components/features/TaggedPostCard';
+import TaggedPostDetailModal from '@/components/features/TaggedPostDetailModal';
+import TaggedPollBuilder, { PollDraft } from '@/components/features/TaggedPollBuilder';
 import ScrutDetailSheet from '@/components/features/ScrutDetailSheet';
+import TaggedUsersSheet from '@/components/features/TaggedUsersSheet';
 import ShareModal from '@/components/features/ShareModal';
+import ReportModal from '@/components/features/ReportModal';
 import AtmosphereControls from '@/components/layout/AtmosphereControls';
-import { cn, timeAgo, formatCount } from '@/lib/utils';
+import { cn, timeAgo } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type FeedTab = 'for_you' | 'tagged_along' | 'voice' | 'bookmarks';
-
-const TOPICS = ['All', 'Life', 'Culture', 'Relationships', 'Philosophy', 'Work', 'Society'];
+type FeedTab = 'tagged_along' | 'visuals' | 'polls' | 'bookmarks';
 
 export default function TaggedPage() {
-  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const {
     taggedIds,
     isTagged,
     toggleTag,
+    likedIds,
+    toggleLike,
     repostedIds,
     toggleRepost,
     bookmarkedIds,
     toggleBookmark,
-    localPosts,
+    posts,
     addPost,
+    addReply,
     allKnownUsers,
+    stickerPack,
+    curatedGifs,
+    photoPresets,
   } = useTagged();
 
-  const [activeTab, setActiveTab] = useState<FeedTab>('for_you');
-  const [selectedTopic, setSelectedTopic] = useState<string>('All');
+  const [activeTab, setActiveTab] = useState<FeedTab>('tagged_along');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [profileUser, setProfileUser] = useState<User | null>(null);
-  const [sharingPost, setSharingPost] = useState<{ post: TaggedFeedPost; conversation?: ConversationStarter } | null>(null);
-  const [replyingToPost, setReplyingToPost] = useState<TaggedFeedPost | null>(null);
+  const [showTaggedSheet, setShowTaggedSheet] = useState(false);
+  const [sharingPost, setSharingPost] = useState<TaggedPostItem | null>(null);
+  const [activeThreadPost, setActiveThreadPost] = useState<TaggedPostItem | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [reportingPost, setReportingPost] = useState<TaggedPostItem | null>(null);
 
-  // Quick Composer State
+  // Composer State
   const [composerText, setComposerText] = useState('');
-  const [composerTopic, setComposerTopic] = useState('Life');
-  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
-  const [voiceDuration, setVoiceDuration] = useState(0);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedGif, setSelectedGif] = useState<string | null>(null);
+  const [selectedSticker, setSelectedSticker] = useState<TaggedSticker | null>(null);
+  const [customLocation, setCustomLocation] = useState('');
+  const [customMood, setCustomMood] = useState('');
+  const [showLocationInput, setShowLocationInput] = useState(false);
+  const [showPollBuilder, setShowPollBuilder] = useState(false);
+  const [pollDraft, setPollDraft] = useState<PollDraft>({
+    question: '',
+    options: ['', ''],
+    durationDays: 1,
+  });
 
-  // Audio player state for voice notes in feed
-  const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
-  const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Modals / Pickers State
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
+  const [gifCategory, setGifCategory] = useState<string>('All');
 
-  // Build the unified initial seed feed
-  const rawPosts = useMemo(() => {
-    const posts: TaggedFeedPost[] = [];
+  // File input ref
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    // Add local user posts first
-    localPosts.forEach((post) => {
-      posts.push(post);
+  // Get active post with real-time updates
+  const currentActivePost = useMemo(() => {
+    if (!activeThreadPost) return null;
+    return posts.find((p) => p.id === activeThreadPost.id) || activeThreadPost;
+  }, [activeThreadPost, posts]);
+
+  // Reply handler for full view thread modal
+  const handleModalReply = (postId: string, text: string, sticker?: TaggedSticker) => {
+    const replyUser: User = currentUser
+      ? {
+          id: currentUser.id,
+          display_name: currentUser.display_name || 'You',
+          avatar_url: currentUser.avatar_url || '',
+          country: currentUser.country || 'Global',
+        }
+      : {
+          id: 'me-anon',
+          display_name: 'You',
+          avatar_url: '',
+          country: 'Global',
+        };
+
+    addReply(postId, replyUser, text, sticker);
+  };
+
+  // Derive all currently tagged user objects
+  const taggedUsers = useMemo(() => {
+    const map = new Map<string, User>();
+    allKnownUsers.forEach((u) => {
+      if (taggedIds.includes(u.id)) {
+        map.set(u.id, u);
+      }
     });
-
-    // Extract scruts from mock conversations
-    MOCK_CONVERSATIONS.forEach((conv) => {
-      const scruts = MOCK_SCRUTS[conv.id] ?? [];
-      scruts.forEach((s) => {
-        posts.push({
-          id: s.id,
-          user: s.user,
-          text: s.text,
-          type: s.type,
-          audio_url: s.audio_url,
-          audio_duration: s.audio_duration,
-          created_at: s.created_at,
-          resonate_count: s.resonate_count ?? 12,
-          resonated_by_me: s.resonated_by_me,
-          repost_count: Math.floor((s.resonate_count ?? 10) / 3),
-          reply_count: Math.floor((s.resonate_count ?? 10) / 4) + 1,
-          conversation_id: conv.id,
-          context_question: conv.body,
-          context_topic: conv.topic,
-        });
-      });
+    posts.forEach((p) => {
+      if (taggedIds.includes(p.user.id) && !map.has(p.user.id)) {
+        map.set(p.user.id, p.user);
+      }
     });
+    return Array.from(map.values());
+  }, [allKnownUsers, posts, taggedIds]);
 
-    // Extract open scruts
-    OPEN_SCRUTS.forEach((s) => {
-      posts.push({
-        id: s.id,
-        user: s.user,
-        text: s.text,
-        type: s.type,
-        audio_url: s.audio_url,
-        audio_duration: s.audio_duration,
-        created_at: s.created_at,
-        resonate_count: s.resonate_count ?? 8,
-        resonated_by_me: s.resonated_by_me,
-        repost_count: Math.floor((s.resonate_count ?? 8) / 4),
-        reply_count: 2,
-        context_topic: 'Open Mic',
-      });
-    });
-
-    return posts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [localPosts]);
-
-  // Filter posts based on activeTab, topic, search query
+  // Filter posts strictly to Tagged circle
   const filteredPosts = useMemo(() => {
-    return rawPosts.filter((post) => {
-      // Tab filter
-      if (activeTab === 'tagged_along' && !taggedIds.includes(post.user.id) && post.user.id !== currentUser?.id) {
+    return posts.filter((post) => {
+      // Must be from tagged people or current user
+      const isFromTaggedOrMe = taggedIds.includes(post.user.id) || post.user.id === currentUser?.id;
+      if (!isFromTaggedOrMe) {
         return false;
       }
-      if (activeTab === 'voice' && post.type !== 'voice') {
+
+      // Tab filter
+      if (activeTab === 'visuals' && !post.image_url && !post.gif_url) {
+        return false;
+      }
+      if (activeTab === 'polls' && !post.poll) {
         return false;
       }
       if (activeTab === 'bookmarks' && !bookmarkedIds.includes(post.id)) {
         return false;
       }
 
-      // Topic filter
-      if (selectedTopic !== 'All') {
-        const matchesTopic = post.context_topic?.toLowerCase() === selectedTopic.toLowerCase() ||
-          post.text?.toLowerCase().includes(`#${selectedTopic.toLowerCase()}`);
-        if (!matchesTopic) return false;
-      }
-
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchesQuery =
+        const matches =
           post.text?.toLowerCase().includes(q) ||
           post.user.display_name.toLowerCase().includes(q) ||
           post.user.country?.toLowerCase().includes(q) ||
-          post.context_question?.toLowerCase().includes(q);
-        if (!matchesQuery) return false;
+          post.location_tag?.toLowerCase().includes(q) ||
+          post.mood_tag?.toLowerCase().includes(q) ||
+          post.sticker?.label.toLowerCase().includes(q) ||
+          post.poll?.question?.toLowerCase().includes(q) ||
+          post.poll?.options.some((o) => o.text.toLowerCase().includes(q));
+        if (!matches) return false;
       }
 
       return true;
     });
-  }, [rawPosts, activeTab, taggedIds, currentUser?.id, bookmarkedIds, selectedTopic, searchQuery]);
+  }, [posts, activeTab, taggedIds, currentUser?.id, bookmarkedIds, searchQuery]);
 
-  // Pull to refresh simulation
   const handleRefresh = () => {
     setRefreshing(true);
     setTimeout(() => {
       setRefreshing(false);
-      toast.success('Tagged feed refreshed');
-    }, 500);
+      toast.success('Feed updated');
+    }, 450);
   };
 
-  // Voice recording simulation
-  const toggleRecording = () => {
-    if (isVoiceRecording) {
-      // Stop recording
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-      setIsVoiceRecording(false);
-    } else {
-      // Start recording
-      setIsVoiceRecording(true);
-      setVoiceDuration(0);
-      recordingTimerRef.current = setInterval(() => {
-        setVoiceDuration((prev) => prev + 1);
-      }, 1000);
-    }
-  };
+  // Handle local image file upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  useEffect(() => {
-    return () => {
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-      if (audioIntervalRef.current) clearInterval(audioIntervalRef.current);
-    };
-  }, []);
-
-  // Post new thought
-  const handlePublishPost = () => {
-    if (!composerText.trim() && !isVoiceRecording && voiceDuration === 0) {
-      toast.error("Please write a thought or record a voice note.");
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Image is too large. Please select a file under 8MB.');
       return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setSelectedImage(result);
+      setSelectedGif(null); // Clear gif if image picked
+      setShowPhotoPicker(false);
+      toast.success('Photo attached!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Publish new post
+  const handlePublish = () => {
+    const hasText = Boolean(composerText.trim());
+    const hasMedia = Boolean(selectedImage || selectedGif || selectedSticker);
+    const hasPoll = showPollBuilder;
+
+    if (!hasText && !hasMedia && !hasPoll) {
+      toast.error('Please write something, attach media, or add a poll.');
+      return;
+    }
+
+    let createdPoll: TaggedPoll | undefined = undefined;
+
+    if (showPollBuilder) {
+      const validOptions = pollDraft.options.map((o) => o.trim()).filter(Boolean);
+      if (validOptions.length < 2) {
+        toast.error('Polls require at least 2 non-empty options.');
+        return;
+      }
+      const endsAt = new Date(Date.now() + pollDraft.durationDays * 24 * 60 * 60 * 1000).toISOString();
+      createdPoll = {
+        id: `poll-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        question: pollDraft.question.trim() || undefined,
+        options: validOptions.map((opt, i) => ({
+          id: `opt-${Date.now()}-${i}`,
+          text: opt,
+          votes: 0,
+        })),
+        total_votes: 0,
+        duration_days: pollDraft.durationDays,
+        ends_at: endsAt,
+      };
     }
 
     const postUser: User = currentUser
@@ -220,172 +252,215 @@ export default function TaggedPage() {
           country: 'Global',
         };
 
-    const hasVoice = voiceDuration > 0 || isVoiceRecording;
-    if (isVoiceRecording) {
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-      setIsVoiceRecording(false);
-    }
-
     addPost({
       user: postUser,
       text: composerText.trim(),
-      type: hasVoice ? 'voice' : 'text',
-      audio_duration: hasVoice ? Math.max(voiceDuration, 14) : undefined,
-      audio_url: hasVoice ? '/ambient/silence.mp3' : undefined,
-      context_topic: composerTopic,
+      image_url: selectedImage || undefined,
+      gif_url: selectedGif || undefined,
+      sticker: selectedSticker || undefined,
+      poll: createdPoll,
+      location_tag: customLocation.trim() || undefined,
+      mood_tag: customMood.trim() ? (customMood.startsWith('#') ? customMood : `#${customMood}`) : undefined,
     });
 
+    // Reset composer
     setComposerText('');
-    setVoiceDuration(0);
+    setSelectedImage(null);
+    setSelectedGif(null);
+    setSelectedSticker(null);
+    setCustomLocation('');
+    setCustomMood('');
+    setShowLocationInput(false);
+    setShowPollBuilder(false);
+    setPollDraft({
+      question: '',
+      options: ['', ''],
+      durationDays: 1,
+    });
   };
 
-  // Handle Play/Pause of voice clips
-  const handleToggleAudio = (postId: string, duration = 30) => {
-    if (activeAudioId === postId && isPlaying) {
-      setIsPlaying(false);
-      if (audioIntervalRef.current) clearInterval(audioIntervalRef.current);
-    } else {
-      setActiveAudioId(postId);
-      setIsPlaying(true);
-      setAudioProgress(0);
-      if (audioIntervalRef.current) clearInterval(audioIntervalRef.current);
-
-      audioIntervalRef.current = setInterval(() => {
-        setAudioProgress((prev) => {
-          if (prev >= 100) {
-            if (audioIntervalRef.current) clearInterval(audioIntervalRef.current);
-            setIsPlaying(false);
-            return 0;
-          }
-          return prev + (100 / (duration * 10));
-        });
-      }, 100);
-    }
-  };
-
-  // Suggested accounts to tag along with (who are not yet tagged)
   const suggestedUsers = useMemo(() => {
-    return allKnownUsers.filter((u) => !taggedIds.includes(u.id)).slice(0, 8);
+    return allKnownUsers.filter((u) => !taggedIds.includes(u.id)).slice(0, 10);
   }, [allKnownUsers, taggedIds]);
 
+  const filteredGifs = useMemo(() => {
+    if (gifCategory === 'All') return curatedGifs;
+    return curatedGifs.filter((g) => g.category === gifCategory);
+  }, [curatedGifs, gifCategory]);
+
   return (
-    <div className="flex flex-col min-h-screen bg-scruttin-base pb-24 text-white">
+    <div className="flex flex-col min-h-screen bg-[#0a0a10] pb-32 sm:pb-28 text-white font-sans selection:bg-white/20 selection:text-white">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept="image/*"
+        className="hidden"
+      />
+
       {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#0c0c14]/90 backdrop-blur-xl px-4 pt-safe pt-3 pb-2.5">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-white/10 to-white/20 border border-white/15 shadow-inner">
-              <span className="font-serif font-bold text-lg text-white">#</span>
+      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#0c0c14]/95 backdrop-blur-xl px-3 sm:px-4 pt-safe pt-2.5 pb-2">
+        <div className="max-w-xl mx-auto flex items-center justify-between gap-2">
+          {/* Header Title & Branding */}
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 shadow-inner shrink-0">
+              <span className="font-serif font-bold text-base sm:text-lg text-emerald-400">#</span>
             </div>
-            <div>
-              <h1 className="text-[17px] font-bold tracking-tight text-white flex items-center gap-1.5 leading-none">
-                Tagged
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                  LIVE
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-nowrap">
+                <h1 className="text-[15px] sm:text-[17px] font-bold tracking-tight text-white leading-tight truncate">
+                  Tagged
+                </h1>
+                <span className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0 hidden xs:inline-block sm:inline-block">
+                  The Other Side
                 </span>
-              </h1>
-              <p className="text-[11px] text-white/40 font-medium mt-0.5">
-                Micro-perspectives &amp; tagged creator stream
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-white/40 font-medium truncate max-w-[150px] xs:max-w-[220px] sm:max-w-none">
+                Walking through other people&apos;s worlds
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          {/* Header Right Actions */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* Tagged People Count & Small Profile Pics Badge */}
+            <button
+              type="button"
+              id="header-tagged-people-btn"
+              onClick={() => setShowTaggedSheet(true)}
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.09] border border-white/10 hover:border-emerald-500/30 transition-all text-left group active:scale-95 shadow-sm"
+              title="View all tagged creators and untag"
+            >
+              {/* Stacked Small Profile Avatars */}
+              <div className="flex items-center -space-x-1.5 overflow-hidden py-0.5">
+                {taggedUsers.slice(0, 2).map((u, i) => (
+                  <img
+                    key={u.id || i}
+                    src={u.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=60&h=60&fit=crop'}
+                    alt={u.display_name}
+                    className="w-5 h-5 rounded-full object-cover ring-1.5 ring-[#0c0c14] shrink-0"
+                  />
+                ))}
+                {taggedUsers.length === 0 && (
+                  <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-white/40 ring-1.5 ring-[#0c0c14]">
+                    <Users size={10} />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-0.5 sm:gap-1 text-xs">
+                <span className="font-bold text-emerald-400 text-xs">{taggedUsers.length}</span>
+                <span className="text-white/80 group-hover:text-emerald-300 font-medium text-[11px] hidden sm:inline">
+                  Tagged
+                </span>
+                <ChevronRight size={11} className="text-white/30 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </button>
+
             <button
               type="button"
               id="refresh-tagged-feed"
               onClick={handleRefresh}
               title="Refresh Feed"
-              className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/8 transition-all active:scale-95"
+              className="p-1.5 sm:p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/8 transition-all active:scale-95"
             >
-              <RefreshCw size={16} className={refreshing ? 'animate-spin text-white' : ''} />
+              <RefreshCw size={15} className={refreshing ? 'animate-spin text-white' : ''} />
             </button>
             <AtmosphereControls />
           </div>
         </div>
 
-        {/* Tab switcher: For You / Tagged Along / Voice / Bookmarks */}
-        <div className="max-w-xl mx-auto mt-2.5 flex items-center justify-between border-t border-white/5 pt-1.5">
-          <div className="flex items-center gap-1 flex-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('for_you')}
-              className={cn(
-                'relative px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all',
-                activeTab === 'for_you'
-                  ? 'text-white bg-white/10 shadow-sm'
-                  : 'text-white/45 hover:text-white/75 hover:bg-white/5'
-              )}
-            >
-              For You
-              {activeTab === 'for_you' && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-white rounded-full" />
-              )}
-            </button>
-
+        {/* Feed Tab Navigation — Horizontally scrollable and mobile friendly */}
+        <div className="max-w-xl mx-auto mt-2 border-t border-white/5 pt-1">
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar scroll-smooth w-full py-0.5">
             <button
               type="button"
               id="tab-tagged-along"
               onClick={() => setActiveTab('tagged_along')}
               className={cn(
-                'relative px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5',
+                'relative px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap',
                 activeTab === 'tagged_along'
                   ? 'text-white bg-white/10 shadow-sm'
                   : 'text-white/45 hover:text-white/75 hover:bg-white/5'
               )}
             >
               <span>Tagged Along</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-white/70">
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 {taggedIds.length}
               </span>
               {activeTab === 'tagged_along' && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-white rounded-full" />
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-emerald-400 rounded-full" />
               )}
             </button>
 
             <button
               type="button"
-              onClick={() => setActiveTab('voice')}
+              onClick={() => setActiveTab('visuals')}
               className={cn(
-                'relative px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1',
-                activeTab === 'voice'
+                'relative px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap',
+                activeTab === 'visuals'
                   ? 'text-white bg-white/10 shadow-sm'
                   : 'text-white/45 hover:text-white/75 hover:bg-white/5'
               )}
             >
-              <Headphones size={12} />
-              <span>Voice</span>
+              <Camera size={13} />
+              <span>Visuals</span>
+              {activeTab === 'visuals' && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-emerald-400 rounded-full" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              id="tab-polls"
+              onClick={() => setActiveTab('polls')}
+              className={cn(
+                'relative px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap',
+                activeTab === 'polls'
+                  ? 'text-white bg-white/10 shadow-sm'
+                  : 'text-white/45 hover:text-white/75 hover:bg-white/5'
+              )}
+            >
+              <BarChart2 size={13} />
+              <span>Polls</span>
+              {activeTab === 'polls' && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-emerald-400 rounded-full" />
+              )}
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('bookmarks')}
               className={cn(
-                'relative px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all ml-auto',
+                'relative px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ml-auto shrink-0 whitespace-nowrap',
                 activeTab === 'bookmarks'
                   ? 'text-white bg-white/10 shadow-sm'
                   : 'text-white/35 hover:text-white/75 hover:bg-white/5'
               )}
-              title="Bookmarks"
+              title="Saved posts"
             >
               <Bookmark size={13} fill={activeTab === 'bookmarks' ? 'currentColor' : 'none'} />
+              {activeTab === 'bookmarks' && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-0.5 bg-emerald-400 rounded-full" />
+              )}
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-xl mx-auto w-full px-3 pt-3 flex-1">
-        {/* Search & Topic Chips */}
-        <div className="mb-3.5 space-y-2">
+      <main className="max-w-xl mx-auto w-full px-2.5 sm:px-3 pt-2.5 sm:pt-3 flex-1">
+        {/* Search Bar */}
+        <div className="mb-3">
           <div className="relative flex items-center">
-            <Search size={14} className="absolute left-3.5 text-white/30 pointer-events-none" />
+            <Search size={14} className="absolute left-3 text-white/30 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search thoughts, authors, or questions..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-white/[0.05] border border-white/8 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/25 focus:bg-white/[0.08] transition-all"
+              placeholder="Search reflections, tags, polls..."
+              className="w-full pl-8.5 pr-8 py-2 rounded-xl bg-white/[0.05] border border-white/8 text-xs text-white placeholder-white/35 focus:outline-none focus:border-emerald-500/40 focus:bg-white/[0.08] transition-all"
             />
             {searchQuery && (
               <button
@@ -397,174 +472,226 @@ export default function TaggedPage() {
               </button>
             )}
           </div>
-
-          {/* Horizontal Topic Filter */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {TOPICS.map((topic) => (
-              <button
-                key={topic}
-                onClick={() => setSelectedTopic(topic)}
-                className={cn(
-                  'shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-all font-medium',
-                  selectedTopic === topic
-                    ? 'bg-white text-black border-white shadow-sm'
-                    : 'bg-white/[0.03] text-white/50 border-white/8 hover:text-white/80 hover:bg-white/[0.07]'
-                )}
-              >
-                {topic === 'All' ? '✦ All Topics' : `#${topic}`}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Suggested People to Tag Along (Story-like discovery bar) */}
-        {suggestedUsers.length > 0 && activeTab === 'for_you' && (
-          <section className="mb-4 rounded-2xl bg-white/[0.03] border border-white/8 p-3 shadow-sm">
-            <div className="flex items-center justify-between mb-2.5 px-0.5">
-              <span className="text-[11px] font-semibold tracking-wider uppercase text-white/45 flex items-center gap-1.5">
-                <Sparkles size={11} className="text-amber-400" />
-                Discover Voices to Tag Along
-              </span>
-              <span className="text-[10px] text-white/30">Tap to follow</span>
+        {/* Microblog World Composer */}
+        <section className="mb-3.5 sm:mb-4 rounded-2xl bg-white/[0.04] border border-white/10 p-3 sm:p-3.5 shadow-md">
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <div className="shrink-0 pt-0.5">
+              <UserAvatar
+                user={
+                  currentUser
+                    ? {
+                        id: currentUser.id,
+                        display_name: currentUser.display_name || 'You',
+                        avatar_url: currentUser.avatar_url || '',
+                        country: currentUser.country || '',
+                      }
+                    : { id: 'me', display_name: 'You' }
+                }
+                size="md"
+                shape="circle"
+              />
             </div>
-
-            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
-              {suggestedUsers.map((u) => {
-                const isUserTagged = isTagged(u.id);
-                return (
-                  <div
-                    key={u.id}
-                    className="shrink-0 flex flex-col items-center gap-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/15 transition-all w-24 text-center group cursor-pointer"
-                    onClick={() => setProfileUser(u)}
-                  >
-                    <div className="relative">
-                      <UserAvatar user={u} size="md" shape="circle" />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleTag(u);
-                        }}
-                        className={cn(
-                          'absolute -bottom-1 -right-1 p-1 rounded-full border shadow-sm transition-all',
-                          isUserTagged
-                            ? 'bg-emerald-500 text-white border-white/20'
-                            : 'bg-white text-black border-black/10 hover:scale-110'
-                        )}
-                        title={isUserTagged ? 'Tagged' : 'Tag along'}
-                      >
-                        {isUserTagged ? <UserCheck size={9} /> : <UserPlus size={9} />}
-                      </button>
-                    </div>
-
-                    <span className="text-[11px] font-medium text-white/90 truncate w-full group-hover:text-white">
-                      {u.display_name.split(' ')[0]}
-                    </span>
-                    <span className="text-[9px] text-white/40 truncate w-full">
-                      {u.country || 'Global'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* Quick Microblog Composer (X / Bluesky Style) */}
-        <section className="mb-4 rounded-2xl bg-white/[0.04] border border-white/10 p-3.5 shadow-md">
-          <div className="flex items-start gap-3">
-            <UserAvatar
-              user={
-                currentUser
-                  ? {
-                      id: currentUser.id,
-                      display_name: currentUser.display_name || 'You',
-                      avatar_url: currentUser.avatar_url || '',
-                      country: currentUser.country || '',
-                    }
-                  : { id: 'me', display_name: 'You' }
-              }
-              size="md"
-              shape="circle"
-            />
 
             <div className="flex-1 min-w-0">
               <textarea
                 value={composerText}
                 onChange={(e) => setComposerText(e.target.value)}
-                placeholder="What's your perspective? Share a thought or scrut..."
+                placeholder="Share a glimpse into your world... (photos, GIFs, stickers, thoughts)"
                 rows={2}
                 maxLength={280}
                 className="w-full bg-transparent border-0 text-[14px] text-white placeholder-white/35 focus:outline-none resize-none leading-relaxed"
               />
 
-              {/* Voice recording preview pill */}
-              {(isVoiceRecording || voiceDuration > 0) && (
-                <div className="flex items-center gap-2 mb-2 p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
-                  <span className={cn('w-2 h-2 rounded-full bg-rose-500', isVoiceRecording && 'animate-ping')} />
-                  <span>
-                    {isVoiceRecording ? 'Recording voice thought...' : 'Voice clip attached:'}{' '}
-                    <strong>{voiceDuration}s</strong>
-                  </span>
+              {/* Selected Sticker Badge */}
+              {selectedSticker && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border mb-2.5 mr-2 animate-fade-in shadow-sm"
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.08)',
+                    borderColor: 'rgba(255,255,255,0.2)',
+                  }}
+                >
+                  <span className="text-sm">{selectedSticker.emoji}</span>
+                  <span className={selectedSticker.color}>{selectedSticker.label}</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-                      setIsVoiceRecording(false);
-                      setVoiceDuration(0);
-                    }}
-                    className="ml-auto text-rose-400 hover:text-rose-200 p-0.5"
+                    onClick={() => setSelectedSticker(null)}
+                    className="p-0.5 rounded-full hover:bg-white/20 text-white/60 hover:text-white"
                   >
-                    <X size={12} />
+                    <X size={11} />
                   </button>
                 </div>
               )}
 
-              {/* Composer Toolbar */}
-              <div className="flex items-center justify-between border-t border-white/8 pt-2.5 mt-1">
-                <div className="flex items-center gap-1.5">
+              {/* Attached Image Preview */}
+              {selectedImage && (
+                <div className="relative rounded-xl overflow-hidden border border-white/15 mb-2.5 max-h-48 group">
+                  <img src={selectedImage} alt="Attached snapshot" className="w-full h-full object-cover" />
                   <button
                     type="button"
-                    onClick={toggleRecording}
-                    className={cn(
-                      'p-2 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5',
-                      isVoiceRecording
-                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                        : voiceDuration > 0
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                        : 'bg-white/5 text-white/60 border-white/8 hover:text-white hover:bg-white/10'
-                    )}
-                    title="Record voice note"
+                    onClick={() => setSelectedImage(null)}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-black transition-all"
                   >
-                    {isVoiceRecording ? <MicOff size={13} /> : <Mic size={13} />}
-                    <span className="text-[11px]">{isVoiceRecording ? 'Stop' : 'Voice'}</span>
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
+              {/* Attached GIF Preview */}
+              {selectedGif && (
+                <div className="relative rounded-xl overflow-hidden border border-white/15 mb-2.5 max-h-44 group">
+                  <img src={selectedGif} alt="Attached GIF" className="w-full h-full object-cover" />
+                  <span className="absolute bottom-2 left-2 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/60 text-white/80">
+                    GIF
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGif(null)}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-black transition-all"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
+              {/* Location & Mood input bar */}
+              {showLocationInput && (
+                <div className="flex items-center gap-2 mb-2 pt-1 border-t border-white/5 animate-fade-in">
+                  <div className="flex-1 flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/8 text-xs">
+                    <MapPin size={12} className="text-emerald-400 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Add location (e.g. Kyoto, Japan)"
+                      value={customLocation}
+                      onChange={(e) => setCustomLocation(e.target.value)}
+                      className="bg-transparent text-white placeholder-white/30 focus:outline-none w-full text-[11px]"
+                    />
+                  </div>
+                  <div className="w-1/3 flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/8 text-xs">
+                    <input
+                      type="text"
+                      placeholder="#MoodTag"
+                      value={customMood}
+                      onChange={(e) => setCustomMood(e.target.value)}
+                      className="bg-transparent text-white placeholder-white/30 focus:outline-none w-full text-[11px]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Poll Builder Inline Form */}
+              {showPollBuilder && (
+                <TaggedPollBuilder
+                  draft={pollDraft}
+                  onChange={setPollDraft}
+                  onRemove={() => {
+                    setShowPollBuilder(false);
+                    setPollDraft({
+                      question: '',
+                      options: ['', ''],
+                      durationDays: 1,
+                    });
+                  }}
+                />
+              )}
+
+              {/* Composer Toolbar */}
+              <div className="flex items-center justify-between border-t border-white/8 pt-2.5 mt-1 gap-1">
+                <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-x-auto no-scrollbar">
+                  {/* Photo attachment button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPhotoPicker(true)}
+                    className={cn(
+                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
+                      selectedImage ? 'bg-emerald-500/20 text-emerald-300' : 'text-white/60 hover:text-white hover:bg-white/10'
+                    )}
+                    title="Attach Photo or Presets"
+                  >
+                    <ImageIcon size={15} />
+                    <span className="text-[11px] hidden sm:inline">Photo</span>
                   </button>
 
-                  <select
-                    value={composerTopic}
-                    onChange={(e) => setComposerTopic(e.target.value)}
-                    className="text-[11px] bg-white/5 text-white/60 border border-white/8 rounded-xl px-2 py-1.5 focus:outline-none focus:border-white/20"
+                  {/* GIF attachment button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowGifPicker(true)}
+                    className={cn(
+                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
+                      selectedGif ? 'bg-emerald-500/20 text-emerald-300' : 'text-white/60 hover:text-white hover:bg-white/10'
+                    )}
+                    title="Pick GIF"
                   >
-                    <option value="Life" className="bg-[#12121c] text-white">#Life</option>
-                    <option value="Culture" className="bg-[#12121c] text-white">#Culture</option>
-                    <option value="Relationships" className="bg-[#12121c] text-white">#Relationships</option>
-                    <option value="Philosophy" className="bg-[#12121c] text-white">#Philosophy</option>
-                    <option value="Work" className="bg-[#12121c] text-white">#Work</option>
-                  </select>
+                    <span className="text-[10px] font-mono font-bold px-1 py-0.5 rounded bg-white/10 border border-white/15">
+                      GIF
+                    </span>
+                    <span className="text-[11px] hidden sm:inline">GIF</span>
+                  </button>
+
+                  {/* Sticker button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowStickerPicker(true)}
+                    className={cn(
+                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
+                      selectedSticker ? 'bg-indigo-500/20 text-indigo-300' : 'text-white/60 hover:text-white hover:bg-white/10'
+                    )}
+                    title="Attach Mood Sticker"
+                  >
+                    <StickerIcon size={15} />
+                    <span className="text-[11px] hidden sm:inline">Sticker</span>
+                  </button>
+
+                  {/* Poll creation toggle button */}
+                  <button
+                    type="button"
+                    id="compose-poll-btn"
+                    onClick={() => setShowPollBuilder((prev) => !prev)}
+                    className={cn(
+                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
+                      showPollBuilder
+                        ? 'bg-emerald-500/20 text-emerald-300'
+                        : 'text-white/60 hover:text-white hover:bg-white/10'
+                    )}
+                    title="Create a Poll"
+                  >
+                    <BarChart2 size={15} />
+                    <span className="text-[11px] hidden sm:inline">Poll</span>
+                  </button>
+
+                  {/* Location toggle button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationInput((prev) => !prev)}
+                    className={cn(
+                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all shrink-0',
+                      customLocation || showLocationInput ? 'text-emerald-400 bg-emerald-500/10' : 'text-white/60 hover:text-white hover:bg-white/10'
+                    )}
+                    title="Add Location tag"
+                  >
+                    <MapPin size={15} />
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <span className={cn('text-[10px] font-mono', composerText.length > 250 ? 'text-amber-400' : 'text-white/30')}>
                     {280 - composerText.length}
                   </span>
                   <button
                     type="button"
                     id="publish-tagged-post"
-                    onClick={handlePublishPost}
-                    disabled={!composerText.trim() && voiceDuration === 0 && !isVoiceRecording}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-black text-xs font-semibold hover:bg-white/90 disabled:opacity-40 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+                    onClick={handlePublish}
+                    disabled={
+                      !composerText.trim() &&
+                      !selectedImage &&
+                      !selectedGif &&
+                      !selectedSticker &&
+                      (!showPollBuilder || pollDraft.options.filter((o) => o.trim()).length < 2)
+                    }
+                    className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full bg-emerald-400 text-black text-xs font-semibold hover:bg-emerald-300 disabled:opacity-40 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
                   >
-                    <span>Post</span>
+                    <span>Scrut</span>
                     <Send size={11} />
                   </button>
                 </div>
@@ -573,256 +700,301 @@ export default function TaggedPage() {
           </div>
         </section>
 
-        {/* Feed Posts List (Twitter / Bluesky style) */}
+        {/* Feed Posts List (Social Timeline with TaggedPostCard) */}
         {filteredPosts.length > 0 ? (
-          <div className="space-y-3">
+          <div className="divide-y divide-white/[0.06] rounded-2xl bg-[#0f0f18]/60 border border-white/[0.07] overflow-hidden">
             {filteredPosts.map((post) => {
               const userIsTagged = isTagged(post.user.id);
+              const isLiked = likedIds.includes(post.id);
               const isReposted = repostedIds.includes(post.id);
               const isBookmarked = bookmarkedIds.includes(post.id);
-              const isAudioActive = activeAudioId === post.id && isPlaying;
 
               return (
-                <article
+                <TaggedPostCard
                   key={post.id}
-                  className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4 transition-all duration-200 hover:bg-white/[0.05] hover:border-white/15 relative overflow-hidden"
-                >
-                  {/* Top Repost context if reposted */}
-                  {isReposted && (
-                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400/90 mb-2 pl-2">
-                      <Repeat2 size={11} />
-                      <span>You re-scrutted this</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-start gap-3">
-                    {/* Left Column: Avatar */}
-                    <div
-                      className="shrink-0 cursor-pointer group/avatar relative"
-                      onClick={() => setProfileUser(post.user)}
-                    >
-                      <UserAvatar user={post.user} size="md" shape="circle" />
-                    </div>
-
-                    {/* Right Column: Author Info, Content, Embeds, Actions */}
-                    <div className="flex-1 min-w-0">
-                      {/* Author Header Bar */}
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => setProfileUser(post.user)}
-                            className="font-semibold text-white text-[14px] leading-tight hover:underline truncate"
-                          >
-                            {post.user.display_name}
-                          </button>
-                          <span className="text-[12px] text-white/40 font-normal truncate">
-                            @{post.user.twitter || post.user.display_name.toLowerCase().replace(/\s+/g, '')}
-                          </span>
-                          <span className="text-white/20 text-xs">·</span>
-                          <span className="text-[12px] text-white/40">
-                            {timeAgo(post.created_at)}
-                          </span>
-                          {post.user.country && (
-                            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-white/35 px-1.5 py-0.2 rounded bg-white/5 border border-white/5">
-                              <Globe size={9} />
-                              {post.user.country}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Tag Along Quick Toggle */}
-                        {post.user.id !== 'platform' && post.user.id !== currentUser?.id && (
-                          <button
-                            type="button"
-                            onClick={() => toggleTag(post.user)}
-                            className={cn(
-                              'text-[10px] font-medium px-2 py-0.5 rounded-full border transition-all shrink-0',
-                              userIsTagged
-                                ? 'border-white/10 text-white/40 bg-white/5 hover:text-rose-300 hover:border-rose-500/30'
-                                : 'border-white/20 text-white bg-white/10 hover:bg-white hover:text-black'
-                            )}
-                          >
-                            {userIsTagged ? 'Tagged' : '+ Tag Along'}
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Quoted Prompt / Question Context if present */}
-                      {post.context_question && (
-                        <div
-                          onClick={() => {
-                            if (post.conversation_id) {
-                              navigate(`/questions/${post.conversation_id}`);
-                            }
-                          }}
-                          className="my-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/8 hover:bg-white/[0.06] transition-all cursor-pointer group/context"
-                        >
-                          <div className="flex items-center gap-1.5 text-[10px] font-medium text-white/40 mb-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                            <span>In response to:</span>
-                            {post.context_topic && (
-                              <span className="text-amber-400/80 ml-auto font-semibold">
-                                #{post.context_topic}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[13px] font-serif text-white/75 group-hover/context:text-white leading-snug">
-                            “{post.context_question}”
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Post Text Body */}
-                      {post.text && (
-                        <p className="text-[14.5px] leading-relaxed text-white/90 whitespace-pre-line font-sans mb-3 select-text">
-                          {post.text}
-                        </p>
-                      )}
-
-                      {/* Voice Note Waveform Player */}
-                      {post.type === 'voice' && (
-                        <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-white/[0.05] to-white/[0.02] border border-white/10 flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleAudio(post.id, post.audio_duration ?? 28)}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-black hover:scale-105 active:scale-95 transition-all shadow-md"
-                          >
-                            {isAudioActive ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
-                          </button>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between text-[11px] text-white/50 mb-1">
-                              <span className="flex items-center gap-1">
-                                <Volume2 size={11} className={isAudioActive ? 'text-emerald-400 animate-pulse' : ''} />
-                                Voice Scrut
-                              </span>
-                              <span>{post.audio_duration ?? 28}s</span>
-                            </div>
-
-                            {/* Simulated waveform bars */}
-                            <div className="h-4 flex items-center gap-0.5 overflow-hidden">
-                              {Array.from({ length: 28 }).map((_, i) => {
-                                const h = ((Math.sin(i * 0.8) + 1.2) * 50) + (i % 3 === 0 ? 25 : 5);
-                                const played = isAudioActive && (i / 28) * 100 <= audioProgress;
-                                return (
-                                  <div
-                                    key={i}
-                                    className={cn(
-                                      'flex-1 rounded-full transition-all duration-150',
-                                      played ? 'bg-white' : 'bg-white/20'
-                                    )}
-                                    style={{ height: `${Math.min(h, 100)}%` }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Twitter / Bluesky Style Interaction Bar */}
-                      <div className="flex items-center justify-between pt-1 text-white/40 text-xs">
-                        {/* Reply */}
-                        <button
-                          type="button"
-                          onClick={() => setReplyingToPost(post)}
-                          className="flex items-center gap-1.5 hover:text-sky-400 transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-sky-400/10 group/btn"
-                        >
-                          <MessageSquare size={14} className="group-hover/btn:scale-110 transition-transform" />
-                          <span className="text-[11px] font-medium">{post.reply_count}</span>
-                        </button>
-
-                        {/* Repost / Re-Scrut */}
-                        <button
-                          type="button"
-                          onClick={() => toggleRepost(post.id)}
-                          className={cn(
-                            'flex items-center gap-1.5 transition-colors p-1.5 rounded-lg group/btn',
-                            isReposted
-                              ? 'text-emerald-400 bg-emerald-400/10 font-semibold'
-                              : 'hover:text-emerald-400 hover:bg-emerald-400/10'
-                          )}
-                        >
-                          <Repeat2 size={14} className="group-hover/btn:scale-110 transition-transform" />
-                          <span className="text-[11px] font-medium">
-                            {post.repost_count + (isReposted ? 1 : 0)}
-                          </span>
-                        </button>
-
-                        {/* Like / Resonance */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            toast.success('Resonated with this thought');
-                          }}
-                          className="flex items-center gap-1.5 hover:text-rose-400 transition-colors p-1.5 rounded-lg hover:bg-rose-400/10 group/btn"
-                        >
-                          <Heart size={14} className="group-hover/btn:scale-110 transition-transform" />
-                          <span className="text-[11px] font-medium">{formatCount(post.resonate_count)}</span>
-                        </button>
-
-                        {/* Bookmark */}
-                        <button
-                          type="button"
-                          onClick={() => toggleBookmark(post.id)}
-                          className={cn(
-                            'flex items-center gap-1 hover:text-amber-400 transition-colors p-1.5 rounded-lg',
-                            isBookmarked ? 'text-amber-400 bg-amber-400/10' : 'hover:bg-amber-400/10'
-                          )}
-                          title={isBookmarked ? 'Bookmarked' : 'Save bookmark'}
-                        >
-                          <Bookmark size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
-                        </button>
-
-                        {/* Share */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const foundConv = MOCK_CONVERSATIONS.find((c) => c.id === post.conversation_id);
-                            setSharingPost({ post, conversation: foundConv });
-                          }}
-                          className="flex items-center gap-1 hover:text-white transition-colors p-1.5 -mr-1.5 rounded-lg hover:bg-white/10"
-                          title="Share post"
-                        >
-                          <Share2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </article>
+                  post={post}
+                  isTagged={userIsTagged}
+                  isLiked={isLiked}
+                  isReposted={isReposted}
+                  isBookmarked={isBookmarked}
+                  onToggleTag={toggleTag}
+                  onToggleLike={toggleLike}
+                  onToggleRepost={toggleRepost}
+                  onToggleBookmark={toggleBookmark}
+                  onOpenThread={setActiveThreadPost}
+                  onShare={setSharingPost}
+                  onOpenProfile={setProfileUser}
+                  onZoomImage={setZoomedImage}
+                  onReportPost={setReportingPost}
+                  currentUserId={currentUser?.id}
+                />
               );
             })}
           </div>
         ) : (
-          /* Empty State */
+          /* Empty Feed State */
           <div className="my-12 rounded-3xl border border-white/10 bg-white/[0.02] p-8 text-center flex flex-col items-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/40 mb-4">
-              <Headphones size={24} />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-4">
+              <Sparkles size={24} />
             </div>
             <h3 className="text-base font-semibold text-white/90">
-              {activeTab === 'tagged_along' ? 'No posts from tagged creators yet' : 'No matching thoughts found'}
+              {taggedUsers.length === 0
+                ? "You haven't tagged along with anyone yet"
+                : searchQuery
+                ? 'No matching posts found'
+                : 'Your Tagged feed is quiet'}
             </h3>
             <p className="mt-1.5 text-xs text-white/45 max-w-sm leading-relaxed">
-              {activeTab === 'tagged_along'
-                ? 'Tag along with people across the stream or from their profile sheet to see their thoughts here.'
-                : 'Try adjusting your search query or exploring other topic filters.'}
+              {taggedUsers.length === 0
+                ? 'Tag along with creators to walk through their worlds and see what they share on Tagged.'
+                : searchQuery
+                ? 'Try clearing your search query to see other reflections.'
+                : 'Creators in your tagged circle haven’t shared any new updates yet.'}
             </p>
 
-            {activeTab === 'tagged_along' && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('for_you')}
-                className="mt-4 px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-white/90 transition-all shadow-sm"
-              >
-                Explore For You Feed
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowTaggedSheet(true)}
+              className="mt-5 px-5 py-2.5 rounded-2xl bg-emerald-400 text-black text-xs font-bold hover:bg-emerald-300 transition-all shadow-md active:scale-95 flex items-center gap-2"
+            >
+              <Users size={14} />
+              <span>
+                {taggedUsers.length === 0 ? 'Discover & Tag Creators' : `Manage Tagged (${taggedUsers.length})`}
+              </span>
+            </button>
           </div>
         )}
       </main>
 
-      {/* User Profile Sheet (Tag Along action integrated) */}
+      {/* ===================== MODAL: STICKER PACK SELECTOR ===================== */}
+      {showStickerPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-3 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowStickerPicker(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-white/10 bg-[#12121c] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/8 mb-4">
+              <div className="flex items-center gap-2">
+                <StickerIcon size={16} className="text-indigo-400" />
+                <h3 className="text-sm font-bold text-white">Select a Mood Sticker</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStickerPicker(false)}
+                className="p-1 rounded-full text-white/40 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto no-scrollbar py-1">
+              {stickerPack.map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedSticker(st);
+                    setShowStickerPicker(false);
+                  }}
+                  className="flex items-center gap-2 p-2.5 rounded-2xl border bg-white/[0.03] border-white/10 hover:border-white/25 hover:bg-white/[0.08] transition-all text-left group"
+                >
+                  <span className="text-xl group-hover:scale-110 transition-transform">{st.emoji}</span>
+                  <span className={cn('text-xs font-medium truncate', st.color)}>{st.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: GIF SELECTOR ===================== */}
+      {showGifPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-3 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowGifPicker(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#12121c] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/8 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 border border-white/15">
+                  GIF
+                </span>
+                <h3 className="text-sm font-bold text-white">Pick an Atmospheric GIF</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGifPicker(false)}
+                className="p-1 rounded-full text-white/40 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Category tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mb-3 pb-1">
+              {['All', 'Aesthetic', 'Vibe', 'Mood', 'Night', 'Art', 'Reactions'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setGifCategory(cat)}
+                  className={cn(
+                    'shrink-0 text-xs px-2.5 py-1 rounded-full border transition-all',
+                    gifCategory === cat
+                      ? 'bg-white text-black border-white font-semibold'
+                      : 'bg-white/5 text-white/60 border-white/8 hover:text-white'
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* GIF Grid */}
+            <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto no-scrollbar py-1">
+              {filteredGifs.map((gif) => (
+                <div
+                  key={gif.id}
+                  onClick={() => {
+                    setSelectedGif(gif.url);
+                    setSelectedImage(null); // Replace photo if any
+                    setShowGifPicker(false);
+                  }}
+                  className="group relative rounded-xl overflow-hidden border border-white/10 hover:border-emerald-400 cursor-pointer aspect-square bg-black/40"
+                >
+                  <img src={gif.url} alt={gif.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <span className="absolute bottom-1 left-1 text-[8px] font-mono px-1 py-0.2 rounded bg-black/70 text-white/90 truncate max-w-[90%]">
+                    {gif.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: PHOTO ATTACHMENT / PRESETS ===================== */}
+      {showPhotoPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-3 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowPhotoPicker(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-white/10 bg-[#12121c] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/8 mb-3">
+              <div className="flex items-center gap-2">
+                <ImageIcon size={16} className="text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Attach Photo</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPhotoPicker(false)}
+                className="p-1 rounded-full text-white/40 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Option 1: Upload from device */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full p-4 rounded-2xl border-2 border-dashed border-white/20 hover:border-emerald-400 hover:bg-white/[0.04] transition-all flex flex-col items-center justify-center gap-2 text-center mb-4 group"
+            >
+              <div className="p-2.5 rounded-full bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
+                <Upload size={20} />
+              </div>
+              <span className="text-xs font-semibold text-white">Upload from your device</span>
+              <span className="text-[10px] text-white/40">Supports PNG, JPG, WebP up to 8MB</span>
+            </button>
+
+            {/* Option 2: Curated atmospheric presets */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-white/40 mb-2">
+                Or pick an atmospheric snapshot
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {photoPresets.map((preset, i) => (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      setSelectedImage(preset.url);
+                      setSelectedGif(null);
+                      setShowPhotoPicker(false);
+                    }}
+                    className="relative aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-emerald-400 cursor-pointer group"
+                  >
+                    <img src={preset.url} alt={preset.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    <span className="absolute bottom-1 left-1 text-[8px] font-mono px-1 py-0.2 rounded bg-black/70 text-white/90">
+                      {preset.tag}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL: EXPANDED FULL POST & VERTICAL THREAD VIEW ===================== */}
+      <TaggedPostDetailModal
+        post={currentActivePost}
+        isOpen={!!currentActivePost}
+        onClose={() => setActiveThreadPost(null)}
+        isTagged={currentActivePost ? isTagged(currentActivePost.user.id) : false}
+        isLiked={currentActivePost ? likedIds.includes(currentActivePost.id) : false}
+        isReposted={currentActivePost ? repostedIds.includes(currentActivePost.id) : false}
+        isBookmarked={currentActivePost ? bookmarkedIds.includes(currentActivePost.id) : false}
+        onToggleTag={toggleTag}
+        onToggleLike={toggleLike}
+        onToggleRepost={toggleRepost}
+        onToggleBookmark={toggleBookmark}
+        onAddReply={handleModalReply}
+        onShare={(post) => setSharingPost(post)}
+        onOpenProfile={(user) => setProfileUser(user)}
+        onZoomImage={(url) => setZoomedImage(url)}
+        onReportPost={(post) => setReportingPost(post)}
+        currentUser={currentUser}
+        stickerPack={stickerPack}
+      />
+
+      {/* ===================== MODAL: REPORT POST ===================== */}
+      {reportingPost && (
+        <ReportModal
+          scrutId={reportingPost.id}
+          title="Report this Post"
+          subtitle="Why are you reporting this post?"
+          itemType="post"
+          onClose={() => setReportingPost(null)}
+        />
+      )}
+
+      {/* ===================== MODAL: IMAGE LIGHTBOX ===================== */}
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-fade-in"
+          onClick={() => setZoomedImage(null)}
+        >
+          <div className="relative max-w-3xl max-h-[90vh] overflow-hidden rounded-2xl">
+            <img src={zoomedImage} alt="Fullscreen view" className="w-full h-full object-contain max-h-[85vh]" />
+            <button
+              type="button"
+              onClick={() => setZoomedImage(null)}
+              className="absolute top-3 right-3 p-2 rounded-full bg-black/70 text-white hover:bg-black transition-all"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* User Profile Sheet (Tag Along button integrated) */}
       {profileUser && (
         <ScrutDetailSheet
           user={profileUser}
@@ -830,96 +1002,42 @@ export default function TaggedPage() {
         />
       )}
 
+      {/* Tagged People Sheet (View all tagged creators, discover, and untag) */}
+      <TaggedUsersSheet
+        open={showTaggedSheet}
+        onClose={() => setShowTaggedSheet(false)}
+        onOpenProfile={(u) => setProfileUser(u)}
+      />
+
       {/* Share Social Card Modal */}
       {sharingPost && (
         <ShareModal
-          conversation={
-            sharingPost.conversation || {
-              id: sharingPost.post.id,
-              user_id: sharingPost.post.user.id,
-              user: sharingPost.post.user,
-              type: 'statement',
-              body: sharingPost.post.text || 'Insight shared on Scruttin',
-              topic: sharingPost.post.context_topic || 'Tagged',
-              created_at: sharingPost.post.created_at,
-              scrut_count: 14,
-              country_count: 6,
-              is_platform: false,
-              circulation_score: 0.85,
-            }
-          }
+          conversation={{
+            id: sharingPost.id,
+            user_id: sharingPost.user.id,
+            user: sharingPost.user,
+            type: 'statement',
+            body: sharingPost.text || 'Glimpse into my world on Scruttin Tagged',
+            topic: sharingPost.location_tag || 'Tagged',
+            created_at: sharingPost.created_at,
+            scrut_count: sharingPost.like_count,
+            country_count: 1,
+            is_platform: false,
+            circulation_score: 0.9,
+          }}
           scrut={{
-            id: sharingPost.post.id,
-            conversation_id: sharingPost.post.conversation_id || 'tagged',
-            user_id: sharingPost.post.user.id,
-            user: sharingPost.post.user,
-            text: sharingPost.post.text,
-            type: sharingPost.post.type,
-            audio_url: sharingPost.post.audio_url,
-            audio_duration: sharingPost.post.audio_duration,
-            created_at: sharingPost.post.created_at,
-            resonate_count: sharingPost.post.resonate_count,
-            resonated_by_me: sharingPost.post.resonated_by_me,
+            id: sharingPost.id,
+            conversation_id: 'tagged',
+            user_id: sharingPost.user.id,
+            user: sharingPost.user,
+            text: sharingPost.text,
+            type: 'text',
+            created_at: sharingPost.created_at,
+            resonate_count: sharingPost.like_count,
+            resonated_by_me: likedIds.includes(sharingPost.id),
           }}
           onClose={() => setSharingPost(null)}
         />
-      )}
-
-      {/* Reply Modal */}
-      {replyingToPost && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm animate-fade-in"
-          onClick={() => setReplyingToPost(null)}
-        >
-          <div
-            className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#14141e] p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-white/8 mb-3">
-              <span className="text-xs font-semibold text-white/70">
-                Replying to <span className="text-white">@{replyingToPost.user.display_name}</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setReplyingToPost(null)}
-                className="p-1 rounded-full text-white/40 hover:text-white"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <p className="text-xs text-white/50 italic mb-3 line-clamp-2">
-              “{replyingToPost.text || 'Voice perspective'}”
-            </p>
-
-            <textarea
-              placeholder="Post your reply..."
-              rows={3}
-              className="w-full bg-white/[0.04] border border-white/10 rounded-xl p-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/25 resize-none mb-3"
-              autoFocus
-            />
-
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setReplyingToPost(null)}
-                className="px-3.5 py-1.5 text-xs text-white/50 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  toast.success('Reply posted to thread');
-                  setReplyingToPost(null);
-                }}
-                className="px-4 py-1.5 rounded-full bg-white text-black text-xs font-semibold hover:bg-white/90"
-              >
-                Reply
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

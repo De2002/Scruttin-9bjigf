@@ -2,8 +2,8 @@
  * ComposeModal — contextual composer with live topics from DB + GIF/sticker attachment.
  */
 import { useState, useEffect, useRef } from 'react';
-import { X, Mic2, Type, ArrowRight, Loader2, Paperclip } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { X, Mic2, Type, ArrowRight, Loader2, Paperclip, RotateCcw } from 'lucide-react';
+import { cn, formatDuration } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import RecordingModal from './RecordingModal';
@@ -313,9 +313,23 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
               <div className="mb-4">
                 {audioUrl ? (
                   <div className="space-y-2 p-3 bg-[rgba(255,255,255,0.05)] rounded-2xl border border-[rgba(255,255,255,0.1)]">
-                    <audio src={audioUrl} controls className="w-full h-8" style={{ filter: 'invert(1) opacity(0.6)' }} />
-                    <button onClick={() => { setAudioUrl(null); setAudioDuration(null); setShowRecording(true); }}
-                      className="w-full py-2 text-white/40 hover:text-white text-xs transition-colors">Re-record</button>
+                    <div className="flex items-center justify-between text-xs px-1">
+                      <div className="flex items-center gap-1.5 text-rose-400 font-medium">
+                        <Mic2 size={13} />
+                        <span>Voice take recorded</span>
+                      </div>
+                      {audioDuration ? (
+                        <span className="font-mono text-white/50">{formatDuration(audioDuration)}</span>
+                      ) : null}
+                    </div>
+                    <audio src={audioUrl} controls className="w-full h-8 opacity-80" style={{ filter: 'invert(1)' }} />
+                    <button
+                      type="button"
+                      onClick={() => { setAudioUrl(null); setAudioDuration(null); setShowRecording(true); }}
+                      className="w-full py-1.5 text-white/50 hover:text-white text-xs transition-colors flex items-center justify-center gap-1.5 rounded-lg hover:bg-white/5"
+                    >
+                      <RotateCcw size={12} /> Re-record take
+                    </button>
                   </div>
                 ) : (
                   <button onClick={() => setShowRecording(true)}
