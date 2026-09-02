@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Globe, Mic2 } from 'lucide-react';
+import { Globe, Mic2, Share2 } from 'lucide-react';
 import { cn, formatCount } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useStream } from '@/stores/streamContext';
@@ -9,6 +9,7 @@ import StatementVote from '@/components/features/StatementVote';
 import ScrutDetailSheet from '@/components/features/ScrutDetailSheet';
 import AtmosphereControls from '@/components/layout/AtmosphereControls';
 import ComposeModal from '@/components/features/ComposeModal';
+import ShareModal from '@/components/features/ShareModal';
 import SponsoredScrutCard from '@/components/features/SponsoredScrutCard';
 import AmbientAd from '@/components/features/AmbientAd';
 import { useAdSession } from '@/hooks/useAdSession';
@@ -88,6 +89,7 @@ export default function StreamPage() {
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [composeOpen, setComposeOpen] = useState(false);
+  const [sharingConversation, setSharingConversation] = useState<ConversationStarter | null>(null);
   const [detailScrut, setDetailScrut] = useState<Scrut | null>(null);
   const [currentSponsoredAd, setCurrentSponsoredAd] = useState<AdCampaign | null>(null);
   const [currentTopic, setCurrentTopic] = useState<string | undefined>();
@@ -356,6 +358,7 @@ export default function StreamPage() {
                 conversation={current.conversation}
                 isPinned={pinned.includes(current.conversation.id)}
                 onPin={() => togglePin(current.conversation.id)}
+                onShare={() => setSharingConversation(current.conversation)}
                 onNext={advance}
               />
             ) : (
@@ -395,11 +398,11 @@ export default function StreamPage() {
           : 'Scrut'}
       </button>
 
-      {composeOpen && current && (
+      {composeOpen && (
         <ComposeModal
           onClose={() => setComposeOpen(false)}
-          defaultMode={current.conversation.type === 'statement' ? 'statement' : current.conversation.type === 'open' ? 'open' : 'question'}
-          contextConversation={!current.isHeader ? current.conversation : undefined}
+          defaultMode={current?.conversation?.type === 'statement' ? 'statement' : current?.conversation?.type === 'open' ? 'open' : 'question'}
+          contextConversation={current && !current.isHeader ? current.conversation : undefined}
           onPosted={() => { setTimeout(() => loadStream(), 500); }}
         />
       )}
@@ -407,16 +410,24 @@ export default function StreamPage() {
       {detailScrut && (
         <ScrutDetailSheet scrut={detailScrut} onClose={() => setDetailScrut(null)} />
       )}
+
+      {sharingConversation && (
+        <ShareModal
+          conversation={sharingConversation}
+          onClose={() => setSharingConversation(null)}
+        />
+      )}
     </div>
   );
 }
 
 function ConversationCard({
-  conversation, isPinned, onPin, onNext,
+  conversation, isPinned, onPin, onShare, onNext,
 }: {
   conversation: ConversationStarter;
   isPinned: boolean;
   onPin: () => void;
+  onShare: () => void;
   onNext: () => void;
 }) {
   const topicColor: Record<string, string> = {
@@ -452,6 +463,15 @@ function ConversationCard({
           className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 text-xs font-medium transition-all"
         >
           <Mic2 size={12} /> Hear what people said
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onShare(); }}
+          onMouseDown={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}
+          title="Share social card"
+          className="px-3 py-2.5 rounded-xl border border-white/10 text-white/40 hover:text-white hover:bg-white/8 text-xs font-medium transition-all"
+        >
+          <Share2 size={13} />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onPin(); }}

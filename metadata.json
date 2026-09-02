@@ -1,0 +1,10 @@
+{
+  "name": "Scruttin",
+  "description": "A text-and-voice social platform. Ask questions, make statements, read thoughts, hear voices, and Scrut what you have to say.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

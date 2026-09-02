@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pin } from 'lucide-react';
+import { ArrowLeft, Pin, Share2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn, formatCount } from '@/lib/utils';
 import { useStream } from '@/stores/streamContext';
@@ -8,6 +8,7 @@ import { usePreferences } from '@/stores/preferencesStore';
 import ScrutCard from '@/components/features/ScrutCard';
 import ScrutDetailSheet from '@/components/features/ScrutDetailSheet';
 import ComposeModal from '@/components/features/ComposeModal';
+import ShareModal from '@/components/features/ShareModal';
 import AtmosphereControls from '@/components/layout/AtmosphereControls';
 import type { ConversationStarter, Scrut } from '@/types';
 
@@ -32,6 +33,7 @@ export default function ConversationPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [composeOpen, setComposeOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [detailScrut, setDetailScrut] = useState<Scrut | null>(null);
@@ -209,6 +211,15 @@ export default function ConversationPage() {
         <div className="flex items-center gap-2" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
           <AtmosphereControls />
           <button
+            id="conversation-share-button"
+            onClick={() => setShareOpen(true)}
+            className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border border-white/10 text-white/40 hover:text-white hover:bg-white/8 transition-all"
+            title="Share social card"
+          >
+            <Share2 size={11} />
+            <span>Share</span>
+          </button>
+          <button
             onClick={() => togglePin(conversation.id)}
             className={cn(
               'flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border transition-all',
@@ -285,6 +296,14 @@ export default function ConversationPage() {
 
       {detailScrut && (
         <ScrutDetailSheet scrut={detailScrut} onClose={() => setDetailScrut(null)} />
+      )}
+
+      {shareOpen && conversation && (
+        <ShareModal
+          conversation={conversation}
+          scrut={scrut}
+          onClose={() => setShareOpen(false)}
+        />
       )}
     </div>
   );

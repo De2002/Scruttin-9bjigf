@@ -52,6 +52,43 @@
       }
     }
     </script>
+    <!-- Safe fetch getter/setter patch for iframe compatibility -->
+    <script>
+      (function() {
+        try {
+          var currentFetch = window.fetch;
+          if (currentFetch) {
+            try {
+              Object.defineProperty(window, 'fetch', {
+                configurable: true,
+                enumerable: true,
+                get: function() {
+                  return currentFetch;
+                },
+                set: function(fn) {
+                  currentFetch = fn;
+                }
+              });
+            } catch (e1) {
+              if (typeof Window !== 'undefined' && Window.prototype) {
+                try {
+                  Object.defineProperty(Window.prototype, 'fetch', {
+                    configurable: true,
+                    enumerable: true,
+                    get: function() {
+                      return currentFetch;
+                    },
+                    set: function(fn) {
+                      currentFetch = fn;
+                    }
+                  });
+                } catch (e2) {}
+              }
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { StreamProvider } from '@/stores/streamContext';
+import { TaggedProvider } from '@/stores/taggedContext';
 import AmbientBackground from '@/components/layout/AmbientBackground';
 import BottomNav from '@/components/layout/BottomNav';
 import LandingPage from '@/pages/LandingPage';
@@ -14,7 +15,7 @@ import DivePage from '@/pages/DivePage';
 import ScrutinAsksPage from '@/pages/ScrutinAsksPage';
 import FromTheCrowdPage from '@/pages/FromTheCrowdPage';
 import StatementsPage from '@/pages/StatementsPage';
-import SpacesPage from '@/pages/SpacesPage';
+import TaggedPage from '@/pages/TaggedPage';
 import MePage from '@/pages/MePage';
 import ConversationPage from '@/pages/ConversationPage';
 import AdminPage from '@/pages/admin/AdminPage';
@@ -65,38 +66,41 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <StreamProvider>
-          <Toaster
-            position="top-center"
-            toastOptions={{
-              style: { background: 'rgba(20,20,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' },
-            }}
-          />
-          <Routes>
-            {/* Public landing */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<AuthPage />} />
+          <TaggedProvider>
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                style: { background: 'rgba(20,20,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' },
+              }}
+            />
+            <Routes>
+              {/* Public landing */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/auth" element={<AuthPage />} />
 
-            {/* Public browsing (read-only) */}
-            <Route path="/stream" element={<AppShell><StreamPage /></AppShell>} />
-            <Route path="/dive" element={<AppShell><DivePage /></AppShell>} />
-            <Route path="/dive/scruttin-asks" element={<AppShell><ScrutinAsksPage /></AppShell>} />
-            <Route path="/dive/crowd" element={<AppShell><FromTheCrowdPage /></AppShell>} />
-            <Route path="/dive/statements" element={<AppShell><StatementsPage /></AppShell>} />
-            <Route path="/conversation/:id" element={<AppShell><ConversationPage /></AppShell>} />
-            <Route path="/conversations/:id" element={<AppShell><ConversationPage /></AppShell>} />
-            <Route path="/questions/:id" element={<AppShell><ConversationPage /></AppShell>} />
-            <Route path="/spaces" element={<AppShell><SpacesPage /></AppShell>} />
-            <Route path="/tagged" element={<Navigate to="/spaces" replace />} />
-            <Route path="/open" element={<Navigate to="/spaces" replace />} />
+              {/* Public browsing (read-only) */}
+              <Route path="/stream" element={<AppShell><StreamPage /></AppShell>} />
+              <Route path="/dive" element={<AppShell><DivePage /></AppShell>} />
+              <Route path="/dive/scruttin-asks" element={<AppShell><ScrutinAsksPage /></AppShell>} />
+              <Route path="/dive/crowd" element={<AppShell><FromTheCrowdPage /></AppShell>} />
+              <Route path="/dive/statements" element={<AppShell><StatementsPage /></AppShell>} />
+              <Route path="/conversation/:id" element={<AppShell><ConversationPage /></AppShell>} />
+              <Route path="/conversations/:id" element={<AppShell><ConversationPage /></AppShell>} />
+              <Route path="/questions/:id" element={<AppShell><ConversationPage /></AppShell>} />
+              <Route path="/tagged" element={<AppShell><TaggedPage /></AppShell>} />
+              <Route path="/spaces" element={<Navigate to="/tagged" replace />} />
+              <Route path="/open" element={<Navigate to="/tagged" replace />} />
 
-            {/* Auth required */}
-            <Route path="/me" element={<AppShell><Protected><MePage /></Protected></AppShell>} />
-            <Route path="/admin" element={<Protected><AdminPage /></Protected>} />
+              {/* Auth required */}
+              <Route path="/me" element={<AppShell><Protected><MePage /></Protected></AppShell>} />
+              <Route path="/admin" element={<Protected><AdminPage /></Protected>} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TaggedProvider>
         </StreamProvider>
       </AuthProvider>
     </BrowserRouter>
   );
 }
+

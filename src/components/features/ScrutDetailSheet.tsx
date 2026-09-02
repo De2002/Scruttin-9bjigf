@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Globe, ExternalLink, X } from 'lucide-react';
+import { Globe, ExternalLink, X, UserPlus, UserCheck, Sparkles, MessageSquare } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
-import type { Scrut } from '@/types';
+import type { Scrut, User } from '@/types';
+import { useTagged } from '@/stores/taggedContext';
 
 interface Props {
-  scrut: Scrut;
+  scrut?: Scrut | null;
+  user?: User | null;
   onClose: () => void;
 }
 
@@ -34,9 +36,11 @@ function ensureHttps(url: string) {
   return url.startsWith('http') ? url : `https://${url}`;
 }
 
-export default function ScrutDetailSheet({ scrut, onClose }: Props) {
-  const { user } = scrut;
-  const mapUrl = getMapUrl(user.country);
+export default function ScrutDetailSheet({ scrut, user: propUser, onClose }: Props) {
+  const user = propUser || scrut?.user;
+  const { isTagged, toggleTag } = useTagged();
+  const tagged = user ? isTagged(user.id) : false;
+  const mapUrl = user?.country ? getMapUrl(user.country) : null;
 
   // Sheet drag-to-dismiss
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -52,6 +56,8 @@ export default function ScrutDetailSheet({ scrut, onClose }: Props) {
     requestAnimationFrame(() => setMounted(true));
     return () => document.documentElement.classList.remove('profile-sheet-active');
   }, []);
+
+  if (!user) return null;
 
   const triggerClose = () => {
     setClosing(true);
@@ -97,7 +103,6 @@ export default function ScrutDetailSheet({ scrut, onClose }: Props) {
   };
 
   const initials = user.display_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-
   const sheetY = closing ? '100%' : !mounted ? '100%' : `${dragDy}px`;
 
   return (
@@ -128,11 +133,11 @@ export default function ScrutDetailSheet({ scrut, onClose }: Props) {
       >
         {/* Sheet body */}
         <div
-          className="relative rounded-t-3xl overflow-hidden"
+          className="relative rounded-t-3xl overflow-hidden shadow-2xl"
           style={{
             background: 'rgba(14, 14, 22, 0.97)',
             backdropFilter: 'blur(24px)',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
           }}
         >
           {/* Country map — large watermark fills the top area */}
@@ -170,49 +175,102 @@ export default function ScrutDetailSheet({ scrut, onClose }: Props) {
 
           {/* Content */}
           <div className="relative z-10 px-6 pt-4 pb-8">
-            {/* Avatar + name */}
-            <div className="flex items-center gap-4 mb-5">
-              <div className="relative shrink-0">
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.display_name}
-                    className="w-16 h-16 rounded-full object-cover ring-1 ring-white/10"
-                  />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-white/70 font-semibold text-xl">
-                    {initials}
-                  </div>
-                )}
+            {/* Avatar + name + Tag Along button */}
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="relative shrink-0">
+                  {user.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user.display_name}
+                      className="w-16 h-16 rounded-2xl object-cover ring-1 ring-white/10"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-white/70 font-semibold text-xl">
+                      {initials}
+                    </div>
+                  )}
+                  {user.id !== 'platform' && (
+                    <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/90 text-[10px] text-white ring-2 ring-[#0e0e16]">
+                      <Sparkles size={10} />
+                    </span>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-white font-semibold text-[18px] leading-tight truncate">
+                    {user.display_name}
+                  </h2>
+                  <p className="text-white/40 text-[12px] truncate">
+                    @{user.twitter || user.display_name.toLowerCase().replace(/\s+/g, '')}
+                  </p>
+                  {(user.city || user.country) && (
+                    <p className="flex items-center gap-1.5 text-white/45 text-[12px] mt-1">
+                      <Globe size={11} strokeWidth={1.5} />
+                      {user.city ? `${user.city}, ${user.country}` : user.country}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <div className="flex-1 min-w-0">
-                <h2 className="text-white font-semibold text-[18px] leading-tight truncate">
-                  {user.display_name}
-                </h2>
-                {(user.city || user.country) && (
-                  <p className="flex items-center gap-1.5 text-white/40 text-[13px] mt-1">
-                    <Globe size={11} strokeWidth={1.5} />
-                    {user.city ? `${user.city}, ${user.country}` : user.country}
-                  </p>
-                )}
-              </div>
+              {/* Tag along button */}
+              {user.id !== 'platform' && (
+                <button
+                  type="button"
+                  id="profile-tag-along-btn"
+                  onClick={() => toggleTag(user)}
+                  className={cn(
+                    'shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 shadow-sm active:scale-95',
+                    tagged
+                      ? 'bg-white/10 text-white border border-white/20 hover:bg-rose-500/15 hover:border-rose-500/30 hover:text-rose-300'
+                      : 'bg-white text-black hover:bg-white/90 hover:shadow-[0_0_12px_rgba(255,255,255,0.3)]'
+                  )}
+                >
+                  {tagged ? (
+                    <>
+                      <UserCheck size={13} className="text-emerald-400" />
+                      <span>Tagged</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={13} />
+                      <span>Tag Along</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Thin rule */}
             <div className="border-t border-white/7 mb-5" />
 
             {/* Bio */}
-            {user.bio && (
-              <p className="text-white/68 text-[15px] font-serif leading-[1.7] mb-5">
+            {user.bio ? (
+              <p className="text-white/75 text-[14px] leading-relaxed mb-5 font-sans">
                 {user.bio}
+              </p>
+            ) : (
+              <p className="text-white/35 text-xs italic mb-5">
+                Observing conversations and sharing perspectives on Scruttin.
               </p>
             )}
 
-            {/* Scrut timestamp */}
-            <p className="text-white/25 text-[11px] tracking-wide mb-5 uppercase font-medium">
-              Scrut from {timeAgo(scrut.created_at)}
-            </p>
+            {/* Feed connection note */}
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/5 text-[11px] text-white/50 mb-5">
+              <MessageSquare size={13} className="text-white/40 shrink-0" />
+              <span>
+                {tagged
+                  ? `You are tagging along with ${user.display_name.split(' ')[0]}. Their updates appear in your Tagged feed.`
+                  : `Tag along to follow ${user.display_name.split(' ')[0]}'s thoughts and voice notes in your Tagged feed.`}
+              </span>
+            </div>
+
+            {/* Scrut timestamp if triggered from specific scrut */}
+            {scrut && (
+              <p className="text-white/25 text-[11px] tracking-wide mb-5 uppercase font-medium">
+                Scrut from {timeAgo(scrut.created_at)}
+              </p>
+            )}
 
             {/* Links */}
             {(user.website || user.twitter || user.instagram) && (
@@ -241,7 +299,6 @@ export default function ScrutDetailSheet({ scrut, onClose }: Props) {
                                text-white/50 hover:text-white/80 hover:border-white/20 hover:bg-white/8
                                text-xs font-medium transition-all"
                   >
-                    {/* X / Twitter icon */}
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.736-8.84L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                     </svg>
@@ -258,7 +315,6 @@ export default function ScrutDetailSheet({ scrut, onClose }: Props) {
                                text-white/50 hover:text-white/80 hover:border-white/20 hover:bg-white/8
                                text-xs font-medium transition-all"
                   >
-                    {/* Instagram icon */}
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
                       <circle cx="12" cy="12" r="4"/>

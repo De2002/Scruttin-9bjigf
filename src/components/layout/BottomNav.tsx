@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Layers3, User } from 'lucide-react';
+import { Users, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTagged } from '@/stores/taggedContext';
 
 // Wavy icon for Dive
 function WavesIcon({ size = 20, strokeWidth = 1.6 }: { size?: number; strokeWidth?: number }) {
@@ -30,13 +31,14 @@ function SLogoIcon({ size = 20, active = false }: { size?: number; active?: bool
 const NAV_ITEMS = [
   { path: '/stream', label: 'Stream', icon: 'slogo' },
   { path: '/dive', label: 'Dive', icon: 'waves' },
-  { path: '/spaces', label: 'Spaces', icon: 'spaces' },
+  { path: '/tagged', label: 'Tagged', icon: 'tagged' },
   { path: '/me', label: 'Me', icon: 'user' },
 ];
 
 export default function BottomNav() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { taggedIds } = useTagged();
 
   return (
     <nav aria-label="Primary navigation" className="fixed bottom-0 left-0 right-0 z-10 safe-area-pb px-3 pb-2 transition-all duration-300 ease-out sm:px-5 sheet-nav">
@@ -48,16 +50,24 @@ export default function BottomNav() {
             return (
               <button
                 key={path}
+                id={`nav-${label.toLowerCase()}`}
                 onClick={() => navigate(path)}
                 className={cn(
                   'relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60',
                   active ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white/75'
                 )}
               >
-                <span className={cn('transition-all duration-200', active && 'drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]')}>
+                <span className={cn('relative transition-all duration-200', active && 'drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]')}>
                   {icon === 'slogo' && <SLogoIcon size={20} active={active} />}
                   {icon === 'waves' && <WavesIcon size={20} strokeWidth={sw} />}
-                  {icon === 'spaces' && <Layers3 size={20} strokeWidth={sw} />}
+                  {icon === 'tagged' && (
+                    <>
+                      <Users size={20} strokeWidth={sw} />
+                      {taggedIds.length > 0 && !active && (
+                        <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      )}
+                    </>
+                  )}
                   {icon === 'user' && <User size={20} strokeWidth={sw} />}
                 </span>
                 <span className={cn('text-[10px] font-medium tracking-wide transition-all', active ? 'opacity-100' : 'opacity-60')}>
@@ -74,3 +84,4 @@ export default function BottomNav() {
     </nav>
   );
 }
+
