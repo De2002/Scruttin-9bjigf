@@ -14,7 +14,7 @@ interface CustomAtmosphere {
 }
 
 export default function AmbientBackground() {
-  const { ambient } = usePreferences();
+  const { ambient, reducedMotion } = usePreferences();
   const [customAtmospheres, setCustomAtmospheres] = useState<CustomAtmosphere[]>([]);
 
   useEffect(() => {
@@ -34,7 +34,10 @@ export default function AmbientBackground() {
             key={mediaUrl}
             className="absolute inset-0 w-full h-full object-cover"
             src={mediaUrl}
-            autoPlay muted loop playsInline
+            autoPlay={!reducedMotion}
+            muted
+            loop={!reducedMotion}
+            playsInline
           />
         ) : (
           <img
@@ -64,7 +67,10 @@ export default function AmbientBackground() {
           key={customConfig.video_url}
           className="absolute inset-0 w-full h-full object-cover ambient-fade"
           src={customConfig.video_url}
-          autoPlay muted loop playsInline
+          autoPlay={!reducedMotion}
+          muted
+          loop={!reducedMotion}
+          playsInline
         />
         <div
           className="absolute inset-0 ambient-fade"
@@ -113,7 +119,10 @@ export default function AmbientBackground() {
         key={builtinConfig.videoUrl}
         className="absolute inset-0 w-full h-full object-cover ambient-fade"
         src={builtinConfig.videoUrl}
-        autoPlay muted loop playsInline
+        autoPlay={!reducedMotion}
+        muted
+        loop={!reducedMotion}
+        playsInline
       />
       <div
         className="absolute inset-0 ambient-fade"

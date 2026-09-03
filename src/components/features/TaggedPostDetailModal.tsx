@@ -379,7 +379,7 @@ export default function TaggedPostDetailModal({
 
             {/* Post Expanded Text */}
             {post.text && (
-              <p className="text-[17px] leading-[1.6] text-[#f4f6fa] whitespace-pre-line font-sans mb-3.5 select-text tracking-[-0.01em]">
+              <p className="text-[17px] leading-[1.6] text-[#f4f6fa] whitespace-pre-line mb-3.5 select-text tracking-[-0.01em]">
                 {formattedText}
               </p>
             )}

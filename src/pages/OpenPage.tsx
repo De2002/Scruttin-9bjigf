@@ -68,6 +68,7 @@ export default function OpenPage() {
   const { autoPlayVoice } = usePreferences();
 
   const touchStartY = useRef(0);
+  const isTouchTracking = useRef(false);
   const mouseStartY = useRef(0);
   const isDragging = useRef(false);
   const advancing = useRef(false);
@@ -143,23 +144,52 @@ export default function OpenPage() {
   }, [showTutorial, scruts.length]);
 
   const onTouchStart = (e: React.TouchEvent) => {
-    // Don't track if touch starts in a modal/sheet
-    if ((e.target as HTMLElement).closest('[data-no-swipe]')) return;
-    touchStartY.current = e.touches[0].clientY;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const target = e.target instanceof Element ? e.target : null;
+    if (
+      target?.closest('[data-atmosphere-controls], [data-no-swipe], button, a, input, textarea, select') ||
+      touch.clientY <= 90
+    ) {
+      isTouchTracking.current = false;
+      return;
+    }
+    isTouchTracking.current = true;
+    touchStartY.current = touch.clientY;
   };
+
   const onTouchEnd = (e: React.TouchEvent) => {
-    if ((e.target as HTMLElement).closest('[data-no-swipe]')) return;
+    if (!isTouchTracking.current) return;
+    isTouchTracking.current = false;
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('[data-atmosphere-controls], [data-no-swipe], button, a, input, textarea, select')) {
+      return;
+    }
+    if (!e.changedTouches || e.changedTouches.length === 0) return;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (dy < -SWIPE_THRESHOLD) advance();
   };
+
   const onMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('[data-no-swipe]')) return;
-    mouseStartY.current = e.clientY; isDragging.current = true;
+    const target = e.target instanceof Element ? e.target : null;
+    if (
+      target?.closest('[data-atmosphere-controls], [data-no-swipe], button, a, input, textarea, select') ||
+      e.clientY <= 90
+    ) {
+      isDragging.current = false;
+      return;
+    }
+    mouseStartY.current = e.clientY;
+    isDragging.current = true;
   };
+
   const onMouseUp = (e: React.MouseEvent) => {
     if (!isDragging.current) return;
     isDragging.current = false;
-    if ((e.target as HTMLElement).closest('[data-no-swipe]')) return;
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('[data-atmosphere-controls], [data-no-swipe], button, a, input, textarea, select')) {
+      return;
+    }
     const dy = e.clientY - mouseStartY.current;
     if (dy < -SWIPE_THRESHOLD) advance();
   };
@@ -182,11 +212,20 @@ export default function OpenPage() {
       style={{ userSelect: 'none', cursor: 'default' }}
     >
       {/* Top controls */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-5 pt-safe pt-4 pointer-events-none">
+      <div
+        className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-5 pt-safe pt-4 select-none"
+        data-no-swipe
+        data-atmosphere-controls
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseMove={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
         <span className="text-white/20 text-[11px] font-medium tracking-widest uppercase">Open</span>
-        <span className="pointer-events-auto" data-no-swipe>
-          <AtmosphereControls />
-        </span>
+        <AtmosphereControls />
       </div>
 
       {/* Content */}

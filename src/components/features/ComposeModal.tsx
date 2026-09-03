@@ -2,11 +2,13 @@
  * ComposeModal — contextual composer with live topics from DB + GIF/sticker attachment.
  */
 import { useState, useEffect, useRef } from 'react';
-import { X, Mic2, Type, ArrowRight, Loader2, Paperclip, RotateCcw } from 'lucide-react';
+import { X, Mic2, Type, ArrowRight, Loader2, RotateCcw, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import RecordingModal from './RecordingModal';
+import GifPickerModal from './GifPickerModal';
+import ImagePickerModal from './ImagePickerModal';
 import { toast } from 'sonner';
 import type { ConversationStarter } from '@/types';
 
@@ -39,7 +41,15 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
   // Attachment state
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
   const attachInputRef = useRef<HTMLInputElement>(null);
+
+  const isAttachmentGif = attachmentUrl
+    ? attachmentUrl.toLowerCase().includes('.gif') ||
+      attachmentUrl.toLowerCase().includes('giphy') ||
+      attachmentUrl.toLowerCase().includes('tenor')
+    : false;
 
   // Load topics from DB
   useEffect(() => {
@@ -186,7 +196,7 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-white font-semibold text-base">{sheetTitle}</h3>
-                {!isResponse && mode === 'question' && (
+                {isStarter && (
                   <p className="text-white/30 text-[11px] mt-0.5">Goes to From the Crowd</p>
                 )}
               </div>
@@ -214,14 +224,24 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
               </div>
             )}
 
-            {/* Mode tabs */}
-            {!isResponse && (
+            {/* Mode tabs — only Ask and State for crowd starters (no 'open') */}
+            {isStarter && (
               <div className="flex gap-1 mb-4 p-1 bg-white/5 rounded-xl">
-                {(['question', 'statement', 'open'] as Mode[]).map(m => (
-                  <button key={m} onClick={() => setMode(m)}
-                    className={cn('flex-1 py-1.5 rounded-lg text-xs font-medium capitalize transition-all',
-                      mode === m ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/60')}>
-                    {m === 'question' ? 'Ask' : m === 'statement' ? 'State' : 'Open'}
+                {(['question', 'statement'] as const).map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setMode(m);
+                      setFormat('text');
+                      setAttachmentUrl(null);
+                    }}
+                    className={cn(
+                      'flex-1 py-1.5 rounded-lg text-xs font-medium capitalize transition-all',
+                      mode === m ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/60'
+                    )}
+                  >
+                    {m === 'question' ? 'Ask' : 'State'}
                   </button>
                 ))}
               </div>
@@ -244,19 +264,27 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
               </div>
             )}
 
-            {/* Format toggle */}
-            <div className="flex gap-2 mb-4">
-              {(['text', 'voice'] as Format[]).map(f => (
-                <button key={f} onClick={() => setFormat(f)}
-                  className={cn('flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-xs font-medium transition-all',
-                    format === f ? 'border-white/25 bg-white/10 text-white' : 'border-white/8 bg-white/4 text-white/40 hover:bg-white/8 hover:text-white/70')}>
-                  {f === 'voice' ? <><Mic2 size={12} /> Voice</> : <><Type size={12} /> Text</>}
-                </button>
-              ))}
-            </div>
+            {/* Format toggle — only for responses / open takes, NOT on the ask sheet */}
+            {!isStarter && (
+              <div className="flex gap-2 mb-4">
+                {(['text', 'voice'] as Format[]).map(f => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFormat(f)}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-xs font-medium transition-all',
+                      format === f ? 'border-white/25 bg-white/10 text-white' : 'border-white/8 bg-white/4 text-white/40 hover:bg-white/8 hover:text-white/70'
+                    )}
+                  >
+                    {f === 'voice' ? <><Mic2 size={12} /> Voice</> : <><Type size={12} /> Text</>}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Text input + attachment */}
-            {format === 'text' && (
+            {(isStarter || format === 'text') && (
               <>
                 <textarea
                   value={body}
@@ -266,50 +294,115 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
                   maxLength={300}
                   className="w-full bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] rounded-2xl p-3 text-white placeholder-[rgba(255,255,255,0.25)] text-sm resize-none focus:outline-none focus:border-[rgba(255,255,255,0.25)] font-serif leading-relaxed"
                 />
+                {/* Attached media preview (only for responses / open takes) */}
+                {!isStarter && attachmentUrl && (
+                  <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-black/40 mt-2 mb-3 group/attached">
+                    <img
+                      src={attachmentUrl}
+                      alt="attached media"
+                      className="w-full h-40 sm:h-48 object-cover sm:object-contain bg-black/60"
+                    />
+                    {/* Badge */}
+                    <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                      {isAttachmentGif ? (
+                        <span className="px-2 py-0.5 rounded-md bg-purple-600/90 backdrop-blur-md text-white font-bold text-[10px] tracking-wider uppercase shadow-md">
+                          GIF
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-600/90 backdrop-blur-md text-white font-semibold text-[10px] tracking-wider uppercase shadow-md flex items-center gap-1">
+                          <ImageIcon size={10} /> Photo
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => (isAttachmentGif ? setShowGifPicker(true) : setShowImagePicker(true))}
+                        className="px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md text-white/80 hover:text-white border border-white/15 text-[11px] font-medium transition-all"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentUrl(null)}
+                        className="p-1.5 rounded-full bg-black/70 hover:bg-rose-500/80 backdrop-blur-md text-white/80 hover:text-white border border-white/15 transition-all"
+                        title="Remove attachment"
+                        aria-label="Remove attachment"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between mt-1 mb-4">
                   <span className="text-white/25 text-[10px]">{body.length} / 300</span>
-                  {/* Tiny attachment button — secondary, unobtrusive */}
-                  <div className="flex items-center gap-2">
-                    {attachmentUploading && (
-                      <Loader2 size={11} className="text-white/25 animate-spin" />
-                    )}
-                    {attachmentUrl && (
-                      <div className="flex items-center gap-1.5">
-                        <img
-                          src={attachmentUrl}
-                          alt="attachment preview"
-                          className="w-7 h-7 rounded-md object-cover opacity-70"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setAttachmentUrl(null)}
-                          className="text-white/20 hover:text-white/50 text-[10px] transition-colors"
-                          aria-label="Remove attachment"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
-                    {!attachmentUrl && !attachmentUploading && (
-                      <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-2.5 py-1.5 text-white/75 hover:bg-white/15 hover:text-white transition-colors" title="Attach a GIF or sticker">
-                        <Paperclip size={14} />
-                        <span className="text-xs font-medium">Add GIF</span>
-                        <input
-                          ref={attachInputRef}
-                          type="file"
-                          accept="image/gif,image/png,image/jpeg,image/webp"
-                          className="hidden"
-                          onChange={handleAttachment}
-                        />
-                      </label>
-                    )}
-                  </div>
+                  {/* Modern social attachment controls — only for responses / open takes */}
+                  {!isStarter && (
+                    <div className="flex items-center gap-2">
+                      {attachmentUploading && (
+                        <div className="flex items-center gap-1.5 text-xs text-white/50">
+                          <Loader2 size={12} className="animate-spin text-white/70" />
+                          <span>Uploading...</span>
+                        </div>
+                      )}
+
+                      {!attachmentUploading && (
+                        <>
+                          {/* GIF Picker Button */}
+                          <button
+                            type="button"
+                            onClick={() => setShowGifPicker(true)}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 shadow-sm',
+                              attachmentUrl && isAttachmentGif
+                                ? 'border-purple-400/50 bg-purple-500/20 text-purple-200 ring-1 ring-purple-400/40'
+                                : 'border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300'
+                            )}
+                            title="Attach reaction GIF"
+                          >
+                            <span className="px-1 py-0.2 rounded bg-purple-400 text-black font-black text-[9px] uppercase tracking-wider">
+                              GIF
+                            </span>
+                            <span>{attachmentUrl && isAttachmentGif ? 'GIF Added' : 'GIF'}</span>
+                          </button>
+
+                          {/* Image / Photo Picker Button */}
+                          <button
+                            type="button"
+                            onClick={() => setShowImagePicker(true)}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all active:scale-95 shadow-sm',
+                              attachmentUrl && !isAttachmentGif
+                                ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/40'
+                                : 'border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300'
+                            )}
+                            title="Attach photo or image"
+                          >
+                            <ImageIcon size={13} className="text-emerald-400" />
+                            <span>{attachmentUrl && !isAttachmentGif ? 'Photo Added' : 'Photo'}</span>
+                          </button>
+
+                          {/* Hidden file input for custom uploads */}
+                          <input
+                            ref={attachInputRef}
+                            type="file"
+                            accept="image/gif,image/png,image/jpeg,image/webp"
+                            className="hidden"
+                            onChange={handleAttachment}
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </>
             )}
 
-            {/* Voice recording */}
-            {format === 'voice' && (
+            {/* Voice recording — only for responses / open takes */}
+            {!isStarter && format === 'voice' && (
               <div className="mb-4">
                 {audioUrl ? (
                   <div className="space-y-2 p-3 bg-[rgba(255,255,255,0.05)] rounded-2xl border border-[rgba(255,255,255,0.1)]">
@@ -376,6 +469,22 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
         <RecordingModal
           onRecorded={(url, dur) => { setAudioUrl(url); setAudioDuration(dur); setShowRecording(false); }}
           onCancel={() => setShowRecording(false)}
+        />
+      )}
+
+      {showGifPicker && (
+        <GifPickerModal
+          onSelect={(url) => setAttachmentUrl(url)}
+          onClose={() => setShowGifPicker(false)}
+          onUploadCustom={() => attachInputRef.current?.click()}
+        />
+      )}
+
+      {showImagePicker && (
+        <ImagePickerModal
+          onSelect={(url) => setAttachmentUrl(url)}
+          onUploadFile={() => attachInputRef.current?.click()}
+          onClose={() => setShowImagePicker(false)}
         />
       )}
     </>

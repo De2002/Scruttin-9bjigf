@@ -1,14 +1,41 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mic2, MessageCircle, Camera, Loader2, Edit3, Check, X } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  Mic2,
+  MessageCircle,
+  Camera,
+  Loader2,
+  Edit3,
+  Check,
+  X,
+  Coffee,
+  Layers,
+  ChevronRight,
+  ExternalLink,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import MakeScruttinYours from '@/components/features/MakeScruttinYours';
 import MeTopBar from '@/components/features/MeTopBar';
+import UserContributionsSheet from '@/components/features/UserContributionsSheet';
+import ComposeModal from '@/components/features/ComposeModal';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 type Tab = 'scruts' | 'yours' | 'account';
+
+function ensureHttps(url: string) {
+  return url.startsWith('http') ? url : `https://${url}`;
+}
+
+function getTipLabel(url?: string | null): string {
+  if (!url) return 'Buy a coffee';
+  const l = url.toLowerCase();
+  if (l.includes('buymeacoffee.com') || l.includes('bmc.link')) return 'Buy Me a Coffee';
+  if (l.includes('ko-fi.com')) return 'Ko-fi';
+  if (l.includes('paypal.me') || l.includes('paypal.com')) return 'PayPal';
+  return 'Tip & Support';
+}
 
 interface MyScrut {
   id: string;
@@ -26,6 +53,7 @@ export default function MePage() {
   const { user, loading, refreshUser } = useAuth();
   const navigate = useNavigate();
 
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>('scruts');
   const [myScruts, setMyScruts] = useState<MyScrut[]>([]);
   const [activity, setActivity] = useState({ scruts_given: 0, conversations_asked: 0 });
@@ -38,8 +66,21 @@ export default function MePage() {
   const [editWebsite, setEditWebsite] = useState('');
   const [editTwitter, setEditTwitter] = useState('');
   const [editInstagram, setEditInstagram] = useState('');
+  const [editTipLink, setEditTipLink] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Contributions sheet state & Compose modal state
+  const [showContributionsSheet, setShowContributionsSheet] = useState(false);
+  const [composeModalMode, setComposeModalMode] = useState<'question' | 'statement' | null>(null);
+
+  // Auto-open activity sheet if navigated with ?tab=activity or path contains activity
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('tab') === 'activity' || location.pathname.includes('/activity')) {
+      setShowContributionsSheet(true);
+    }
+  }, [location]);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth', { replace: true });
@@ -53,6 +94,12 @@ export default function MePage() {
     setEditWebsite(user.website ?? '');
     setEditTwitter(user.twitter ?? '');
     setEditInstagram(user.instagram ?? '');
+    const currentTip =
+      user.tip_link ||
+      (typeof window !== 'undefined'
+        ? localStorage.getItem(`scruttin_tip_${user.id}`) || localStorage.getItem(`scruttin_tip_link_${user.id}`) || ''
+        : '');
+    setEditTipLink(currentTip);
   }, [user]);
 
   useEffect(() => {
@@ -81,14 +128,39 @@ export default function MePage() {
   const saveProfile = async () => {
     if (!user) return;
     setSavingProfile(true);
-    const { error } = await supabase.from('user_profiles').update({
+
+    const cleanTip = editTipLink.trim();
+    try {
+      localStorage.setItem(`scruttin_tip_${user.id}`, cleanTip);
+      localStorage.setItem(`scruttin_tip_link_${user.id}`, cleanTip);
+    } catch {
+      /* storage unavailable */
+    }
+
+    // First attempt to update with tip_link
+    let { error } = await supabase.from('user_profiles').update({
       display_name: editName.trim(),
       bio: editBio.trim() || null,
       city: editCity.trim() || null,
       website: editWebsite.trim() || null,
       twitter: editTwitter.trim().replace('@', '') || null,
       instagram: editInstagram.trim().replace('@', '') || null,
+      tip_link: cleanTip || null,
     }).eq('id', user.id);
+
+    // If column tip_link does not exist in schema yet, fallback cleanly without failing
+    if (error && error.message?.toLowerCase().includes('column') && error.message?.toLowerCase().includes('tip_link')) {
+      const retry = await supabase.from('user_profiles').update({
+        display_name: editName.trim(),
+        bio: editBio.trim() || null,
+        city: editCity.trim() || null,
+        website: editWebsite.trim() || null,
+        twitter: editTwitter.trim().replace('@', '') || null,
+        instagram: editInstagram.trim().replace('@', '') || null,
+      }).eq('id', user.id);
+      error = retry.error;
+    }
+
     setSavingProfile(false);
     if (error) { toast.error(error.message); return; }
     await refreshUser();
@@ -182,6 +254,33 @@ export default function MePage() {
                   </span>
                 )}
               </div>
+
+              {/* Tipping Coffee Badge or Add Prompt */}
+              {!editing && (
+                <div className="mt-2 flex items-center gap-2">
+                  {editTipLink ? (
+                    <a
+                      href={ensureHttps(editTipLink)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 transition-all shadow-sm active:scale-95 group"
+                    >
+                      <Coffee size={12} className="text-amber-400 group-hover:scale-110 transition-transform" />
+                      <span>{getTipLabel(editTipLink)}</span>
+                      <ExternalLink size={10} className="text-amber-400/60" />
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(true)}
+                      className="inline-flex items-center gap-1.5 text-[11px] text-amber-300/80 hover:text-amber-300 transition-colors"
+                    >
+                      <Coffee size={11} className="text-amber-400" />
+                      <span className="underline underline-offset-2">+ Add Coffee / PayPal / Ko-fi tip link</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {editing ? (
@@ -212,6 +311,33 @@ export default function MePage() {
 
           {editing && (
             <div className="space-y-2 mb-4">
+              {/* Tipping / Coffee link field */}
+              <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold text-amber-300">
+                  <span className="flex items-center gap-1.5">
+                    <Coffee size={13} className="text-amber-400" />
+                    Tipping & Support link
+                  </span>
+                  {editTipLink && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">
+                      {getTipLabel(editTipLink)}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-white/40">
+                  Add your Buy Me a Coffee, PayPal.me, or Ko-fi URL. This displays a coffee icon on your profile sheet.
+                </p>
+                <div className="relative">
+                  <input
+                    value={editTipLink}
+                    onChange={e => setEditTipLink(e.target.value)}
+                    placeholder="https://buymeacoffee.com/... or paypal.me/... or ko-fi.com/..."
+                    className={cn(INPUT_CLS, 'pl-8 text-xs font-mono text-amber-200 placeholder-white/20')}
+                  />
+                  <Coffee size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-amber-400/60 pointer-events-none" />
+                </div>
+              </div>
+
               <input value={editWebsite} onChange={e => setEditWebsite(e.target.value)} placeholder="Website" className={INPUT_CLS} />
               <div className="flex gap-2">
                 <input value={editTwitter} onChange={e => setEditTwitter(e.target.value)} placeholder="Twitter / X" className={cn(INPUT_CLS, 'flex-1')} style={{ width: 'auto' }} />
@@ -233,6 +359,34 @@ export default function MePage() {
               </div>
             ))}
           </div>
+
+          {/* Button linking to Questions asked, Claims made & Questions responded to */}
+          <button
+            type="button"
+            id="me-view-contributions-btn"
+            onClick={() => setShowContributionsSheet(true)}
+            className="w-full mt-3 p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/15 via-sky-500/10 to-emerald-500/10 hover:from-purple-500/25 hover:via-sky-500/20 hover:to-emerald-500/20 border border-white/10 hover:border-purple-500/40 transition-all text-left group active:scale-[0.99] touch-manipulation flex items-center justify-between shadow-sm"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/35 flex items-center justify-center text-purple-300 shrink-0 shadow-inner">
+                <Layers size={17} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-bold text-white group-hover:text-purple-200 transition-colors">
+                    Questions, Claims & Responses
+                  </p>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-500/25 text-purple-300 font-mono">
+                    Activity
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/50 truncate">
+                  Questions asked · Claims made · Questions responded to
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-white/40 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />
+          </button>
         </div>
 
         {/* Tabs */}
@@ -311,6 +465,39 @@ export default function MePage() {
           </div>
         )}
       </div>
+
+      {/* Activity / Contributions Slide-Up Sheet */}
+      {showContributionsSheet && (
+        <UserContributionsSheet
+          user={{
+            id: user.id,
+            display_name: user.display_name,
+            avatar_url: user.avatar_url || '',
+            country: user.country || 'Global',
+            city: user.city,
+            bio: user.bio,
+            website: user.website,
+            twitter: user.twitter,
+            instagram: user.instagram,
+            tip_link: editTipLink || user.tip_link,
+          }}
+          onClose={() => setShowContributionsSheet(false)}
+          onAskQuestion={() => setComposeModalMode('question')}
+          onMakeClaim={() => setComposeModalMode('statement')}
+        />
+      )}
+
+      {/* Compose modal for quick question or claim creation */}
+      {composeModalMode && (
+        <ComposeModal
+          defaultMode={composeModalMode}
+          onClose={() => setComposeModalMode(null)}
+          onPosted={() => {
+            setComposeModalMode(null);
+            refreshUser();
+          }}
+        />
+      )}
     </div>
   );
 }

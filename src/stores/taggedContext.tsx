@@ -20,6 +20,15 @@ const STORAGE_KEY_BOOKMARKS = 'scruttin_tagged_bookmarked_ids';
 const STORAGE_KEY_LOCAL_POSTS = 'scruttin_tagged_custom_posts';
 const STORAGE_KEY_POLL_VOTES = 'scruttin_tagged_poll_votes';
 
+export const TAGGERS_POSTING_THRESHOLD = 100;
+export const GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+const STORAGE_KEY_MY_TAGGERS_COUNT = 'scruttin_my_taggers_count';
+const STORAGE_KEY_HAD_UNLOCKED = 'scruttin_had_unlocked_posting';
+const STORAGE_KEY_GRACE_STARTED_AT = 'scruttin_grace_period_started_at';
+
+export type TaggerEligibilityStatus = 'unlocked' | 'grace_period' | 'restricted' | 'locked';
+
 const DEFAULT_TAGGED_IDS = ['u5', 'u1', 'u4', 'u2'];
 
 export interface NewTaggedPostPayload {
@@ -33,7 +42,7 @@ export interface NewTaggedPostPayload {
   mood_tag?: string;
 }
 
-interface TaggedContextType {
+export interface TaggedContextType {
   taggedIds: string[];
   isTagged: (userId: string) => boolean;
   toggleTag: (user: User) => boolean;
@@ -56,7 +65,24 @@ interface TaggedContextType {
   posts: TaggedPostItem[];
   addPost: (payload: NewTaggedPostPayload) => TaggedPostItem;
   addReply: (postId: string, user: User, text: string, sticker?: TaggedSticker) => void;
+  isLoading: boolean;
+  refreshFeed: () => Promise<void>;
   
+  // Taggers threshold & posting eligibility rules
+  taggersCount: number;
+  taggersThreshold: number;
+  taggerStatus: TaggerEligibilityStatus;
+  canPostInTagged: boolean;
+  gracePeriodStartedAt: number | null;
+  gracePeriodRemainingMs: number | null;
+  gracePeriodDaysRemaining: number | null;
+  gracePeriodHoursRemaining: number | null;
+  
+  setTaggersCount: (count: number) => void;
+  incrementTaggers: (amount?: number, source?: string) => void;
+  earnStreamOrDiveTaggers: (source?: 'stream' | 'dive') => void;
+  simulateTaggersScenario: (scenario: 'grace_active' | 'grace_expired' | 'unlocked' | 'locked_new') => void;
+
   getTaggedUsersList: () => User[];
   allKnownUsers: User[];
   stickerPack: TaggedSticker[];
@@ -132,6 +158,205 @@ export function TaggedProvider({ children }: { children: ReactNode }) {
       return INITIAL_TAGGED_POSTS;
     }
   });
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Taggers & posting eligibility state
+  const [taggersCount, setTaggersCountState] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_MY_TAGGERS_COUNT);
+      if (stored !== null) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed)) return parsed;
+      }
+    } catch {
+      /* storage unavailable */
+    }
+    // Default to 98 as explicitly given in user prompt (e.g. "If number goes down to maybe 98 person is given 7 days")
+    return 98;
+  });
+
+  const [hadUnlockedPosting, setHadUnlockedPosting] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_HAD_UNLOCKED);
+      if (stored !== null) return stored === 'true';
+    } catch {
+      /* storage unavailable */
+    }
+    return true; // Default true so 98 enters grace period
+  });
+
+  const [gracePeriodStartedAt, setGracePeriodStartedAt] = useState<number | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_GRACE_STARTED_AT);
+      if (stored !== null) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed)) return parsed;
+      }
+    } catch {
+      /* storage unavailable */
+    }
+    // Default: grace period started 2 days ago, leaving 5 days
+    return Date.now() - 2 * 24 * 60 * 60 * 1000;
+  });
+
+  // Keep grace timer reactive
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Compute status
+  const taggerStatus: TaggerEligibilityStatus = (() => {
+    if (taggersCount >= TAGGERS_POSTING_THRESHOLD) {
+      return 'unlocked';
+    }
+    if (hadUnlockedPosting) {
+      const started = gracePeriodStartedAt ?? now;
+      const elapsed = now - started;
+      if (elapsed < GRACE_PERIOD_MS) {
+        return 'grace_period';
+      }
+      return 'restricted';
+    }
+    return 'locked';
+  })();
+
+  const canPostInTagged = taggerStatus === 'unlocked' || taggerStatus === 'grace_period';
+
+  const gracePeriodRemainingMs: number | null = (() => {
+    if (taggerStatus === 'grace_period' && gracePeriodStartedAt) {
+      return Math.max(0, GRACE_PERIOD_MS - (now - gracePeriodStartedAt));
+    }
+    return null;
+  })();
+
+  const gracePeriodDaysRemaining = gracePeriodRemainingMs !== null
+    ? Math.ceil(gracePeriodRemainingMs / (24 * 60 * 60 * 1000))
+    : null;
+
+  const gracePeriodHoursRemaining = gracePeriodRemainingMs !== null
+    ? Math.floor((gracePeriodRemainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000))
+    : null;
+
+  // Persist taggers count
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_MY_TAGGERS_COUNT, taggersCount.toString());
+    } catch {
+      // Ignore localStorage write failures
+    }
+  }, [taggersCount]);
+
+  // Persist hadUnlockedPosting
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_HAD_UNLOCKED, hadUnlockedPosting ? 'true' : 'false');
+    } catch {
+      // Ignore localStorage write failures
+    }
+  }, [hadUnlockedPosting]);
+
+  // Persist gracePeriodStartedAt
+  useEffect(() => {
+    try {
+      if (gracePeriodStartedAt !== null) {
+        localStorage.setItem(STORAGE_KEY_GRACE_STARTED_AT, gracePeriodStartedAt.toString());
+      } else {
+        localStorage.removeItem(STORAGE_KEY_GRACE_STARTED_AT);
+      }
+    } catch {
+      // Ignore localStorage write failures
+    }
+  }, [gracePeriodStartedAt]);
+
+  const setTaggersCount = useCallback((newCount: number) => {
+    const safeCount = Math.max(0, Math.floor(newCount));
+    setTaggersCountState(safeCount);
+
+    if (safeCount >= TAGGERS_POSTING_THRESHOLD) {
+      setHadUnlockedPosting(true);
+      setGracePeriodStartedAt(null);
+    } else {
+      // Dropping below 100
+      setHadUnlockedPosting((prevHad) => {
+        if (prevHad) {
+          // If had unlocked, start grace period if not already running
+          setGracePeriodStartedAt((currentStart) => currentStart ?? Date.now());
+        }
+        return prevHad;
+      });
+    }
+  }, []);
+
+  const incrementTaggers = useCallback((amount = 1, source?: string) => {
+    setTaggersCountState((prev) => {
+      const next = prev + amount;
+      if (next >= TAGGERS_POSTING_THRESHOLD && prev < TAGGERS_POSTING_THRESHOLD) {
+        setHadUnlockedPosting(true);
+        setGracePeriodStartedAt(null);
+        toast.success(`🎉 Reached 100 Taggers! ${source ? `From ${source}. ` : ''}Posting in Tagged is now unlocked!`);
+      } else if (source) {
+        toast.info(`+${amount} Tagger from ${source}! (${next}/${TAGGERS_POSTING_THRESHOLD})`);
+      }
+      return next;
+    });
+  }, []);
+
+  const earnStreamOrDiveTaggers = useCallback((source: 'stream' | 'dive' = 'stream') => {
+    const sourceLabel = source === 'stream' ? 'Stream answer' : 'Dive conversation';
+    incrementTaggers(1, sourceLabel);
+  }, [incrementTaggers]);
+
+  const simulateTaggersScenario = useCallback((scenario: 'grace_active' | 'grace_expired' | 'unlocked' | 'locked_new') => {
+    if (scenario === 'grace_active') {
+      setTaggersCountState(98);
+      setHadUnlockedPosting(true);
+      setGracePeriodStartedAt(Date.now() - 2 * 24 * 60 * 60 * 1000); // 5 days left
+      toast.info('Simulated: 98 taggers with active 7-day grace period (5 days remaining to post)');
+    } else if (scenario === 'grace_expired') {
+      setTaggersCountState(98);
+      setHadUnlockedPosting(true);
+      setGracePeriodStartedAt(Date.now() - 8 * 24 * 60 * 60 * 1000); // 8 days ago (expired)
+      toast.error('Simulated: 98 taggers with 7-day grace period expired (posting restricted)');
+    } else if (scenario === 'unlocked') {
+      setTaggersCountState(105);
+      setHadUnlockedPosting(true);
+      setGracePeriodStartedAt(null);
+      toast.success('Simulated: 105 taggers (posting fully unlocked)');
+    } else if (scenario === 'locked_new') {
+      setTaggersCountState(42);
+      setHadUnlockedPosting(false);
+      setGracePeriodStartedAt(null);
+      toast.info('Simulated: 42 taggers on new account (posting locked, need 100 taggers)');
+    }
+  }, []);
+
+  // Initial fetch / hydration window for perceived performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const refreshFeed = useCallback(async () => {
+    setIsLoading(true);
+    await new Promise((res) => setTimeout(res, 550));
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_LOCAL_POSTS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setPosts(parsed);
+        }
+      }
+    } catch {
+      /* storage unavailable */
+    }
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
     try {
@@ -314,6 +539,11 @@ export function TaggedProvider({ children }: { children: ReactNode }) {
   );
 
   const addPost = useCallback((payload: NewTaggedPostPayload) => {
+    if (!canPostInTagged) {
+      toast.error('Posting restricted: You need at least 100 taggers to post in Tagged.');
+      throw new Error('Posting restricted: 100 taggers required.');
+    }
+
     const newPost: TaggedPostItem = {
       id: `tagpost-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       user: payload.user,
@@ -333,7 +563,7 @@ export function TaggedProvider({ children }: { children: ReactNode }) {
     setPosts((prev) => [newPost, ...prev]);
     toast.success('Glimpse shared to Tagged!');
     return newPost;
-  }, []);
+  }, [canPostInTagged]);
 
   const addReply = useCallback((postId: string, user: User, text: string, sticker?: TaggedSticker) => {
     const newReply: TaggedReply = {
@@ -385,6 +615,20 @@ export function TaggedProvider({ children }: { children: ReactNode }) {
         posts,
         addPost,
         addReply,
+        isLoading,
+        refreshFeed,
+        taggersCount,
+        taggersThreshold: TAGGERS_POSTING_THRESHOLD,
+        taggerStatus,
+        canPostInTagged,
+        gracePeriodStartedAt,
+        gracePeriodRemainingMs,
+        gracePeriodDaysRemaining,
+        gracePeriodHoursRemaining,
+        setTaggersCount,
+        incrementTaggers,
+        earnStreamOrDiveTaggers,
+        simulateTaggersScenario,
         getTaggedUsersList,
         allKnownUsers: MOCK_USERS,
         stickerPack: STICKER_PACK,

@@ -96,7 +96,7 @@ export default function StreamPage() {
 
   const advancing = useRef(false);
   const touchStartY = useRef(0);
-  const touchStartedInAtmosphere = useRef(false);
+  const isTouchTracking = useRef(false);
   const mouseStartY = useRef(0);
   const isDragging = useRef(false);
 
@@ -258,26 +258,53 @@ export default function StreamPage() {
 
   const onTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
+    if (!touch) return;
     const target = e.target instanceof Element ? e.target : null;
-    touchStartedInAtmosphere.current = Boolean(
-      target?.closest('[data-atmosphere-controls], [data-no-swipe]')
-      || (touch.clientY <= 100 && touch.clientX >= window.innerWidth - 180)
-    );
-    if (touchStartedInAtmosphere.current) return;
-    touchStartY.current = touch.clientY;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartedInAtmosphere.current) {
-      touchStartedInAtmosphere.current = false;
+    // Strictly ignore touches that originate inside atmosphere controls, no-swipe elements, interactive elements, or the top header area
+    if (
+      target?.closest('[data-atmosphere-controls], [data-no-swipe], button, a, input, textarea, select') ||
+      touch.clientY <= 90
+    ) {
+      isTouchTracking.current = false;
       return;
     }
+    isTouchTracking.current = true;
+    touchStartY.current = touch.clientY;
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!isTouchTracking.current) return;
+    isTouchTracking.current = false;
+
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('[data-atmosphere-controls], [data-no-swipe], button, a, input, textarea, select')) {
+      return;
+    }
+    if (!e.changedTouches || e.changedTouches.length === 0) return;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (dy < -SWIPE_THRESHOLD) advance();
   };
-  const onMouseDown = (e: React.MouseEvent) => { mouseStartY.current = e.clientY; isDragging.current = true; };
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    const target = e.target instanceof Element ? e.target : null;
+    if (
+      target?.closest('[data-atmosphere-controls], [data-no-swipe], button, a, input, textarea, select') ||
+      e.clientY <= 90
+    ) {
+      isDragging.current = false;
+      return;
+    }
+    mouseStartY.current = e.clientY;
+    isDragging.current = true;
+  };
+
   const onMouseUp = (e: React.MouseEvent) => {
     if (!isDragging.current) return;
     isDragging.current = false;
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('[data-atmosphere-controls], [data-no-swipe], button, a, input, textarea, select')) {
+      return;
+    }
     const dy = e.clientY - mouseStartY.current;
     if (dy < -SWIPE_THRESHOLD) advance();
   };
@@ -310,15 +337,24 @@ export default function StreamPage() {
       )}
 
       {/* Top bar */}
-      <div className="shrink-0 z-30 flex items-center justify-between px-5 pt-safe pt-3 pb-2">
+      <div
+        className="shrink-0 z-30 flex items-center justify-between px-5 pt-safe pt-3 pb-2 select-none"
+        data-no-swipe
+        data-atmosphere-controls
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseMove={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center gap-2">
           {/* S logo */}
           <img src="/favicon.png" alt="Scruttin" className="w-5 h-5 object-contain opacity-80" />
           <span className="text-white font-bold text-[15px] tracking-tight">Stream</span>
         </div>
-        <span onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
-          <AtmosphereControls />
-        </span>
+        <AtmosphereControls />
       </div>
 
       {/* Swipe zone */}
@@ -352,24 +388,32 @@ export default function StreamPage() {
             />
           </div>
         ) : current ? (
-          <div key={index} className={cn('absolute inset-0 flex flex-col justify-center px-5', contentAnim)}>
-            {current.isHeader ? (
-              <ConversationCard
-                conversation={current.conversation}
-                isPinned={pinned.includes(current.conversation.id)}
-                onPin={() => togglePin(current.conversation.id)}
-                onShare={() => setSharingConversation(current.conversation)}
-                onNext={advance}
-              />
-            ) : (
-              <ScrutView
-                conversation={current.conversation}
-                scrut={current.scrut!}
-                streamIndex={index}
-                autoPlayVoice={autoPlayVoice}
-                onAvatarClick={(s) => setDetailScrut(s)}
-              />
+          <div
+            key={index}
+            className={cn(
+              'absolute inset-0 flex flex-col items-center overflow-y-auto no-scrollbar px-4 pt-1 pb-24',
+              contentAnim
             )}
+          >
+            <div className="w-full max-w-sm my-auto">
+              {current.isHeader ? (
+                <ConversationCard
+                  conversation={current.conversation}
+                  isPinned={pinned.includes(current.conversation.id)}
+                  onPin={() => togglePin(current.conversation.id)}
+                  onShare={() => setSharingConversation(current.conversation)}
+                  onNext={advance}
+                />
+              ) : (
+                <ScrutView
+                  conversation={current.conversation}
+                  scrut={current.scrut!}
+                  streamIndex={index}
+                  autoPlayVoice={autoPlayVoice}
+                  onAvatarClick={(s) => setDetailScrut(s)}
+                />
+              )}
+            </div>
           </div>
         ) : null}
 
@@ -499,13 +543,7 @@ function ScrutView({
   onAvatarClick: (s: Scrut) => void;
 }) {
   return (
-    <div className="w-full max-w-sm mx-auto">
-      <div className="mb-4 flex items-start gap-2">
-        <div className="shrink-0 w-0.5 self-stretch bg-white/10 rounded-full" style={{ minHeight: 24 }} />
-        <p className="text-white/35 text-[12px] font-serif leading-snug line-clamp-2 italic">
-          {conversation.body}
-        </p>
-      </div>
+    <div className="w-full">
       <ScrutCard
         scrut={scrut}
         showPosition={conversation.type === 'statement'}
@@ -513,7 +551,7 @@ function ScrutView({
         autoPlayVoice={autoPlayVoice}
         contextText={conversation.body}
       />
-      <div className="mt-5 flex justify-center">
+      <div className="mt-4 flex justify-center">
         <span className="text-white/20 text-[10px] tracking-widest">{streamIndex + 1} · · ·</span>
       </div>
     </div>

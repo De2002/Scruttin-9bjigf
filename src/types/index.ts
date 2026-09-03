@@ -12,6 +12,7 @@ export interface User {
   website?: string;
   twitter?: string;
   instagram?: string;
+  tip_link?: string; // Buy Me a Coffee, PayPal, Ko-fi, or custom support URL
 }
 
 export interface ConversationStarter {

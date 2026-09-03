@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pin, Share2 } from 'lucide-react';
+import { ArrowLeft, Pin, Share2, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn, formatCount } from '@/lib/utils';
 import { useStream } from '@/stores/streamContext';
@@ -246,21 +246,29 @@ export default function ConversationPage() {
             <p className="text-sm">Be the first to answer</p>
           </div>
         ) : (
-          <div key={currentScrutId} className={cn('absolute inset-0 flex flex-col justify-center px-5 pb-6', contentAnim)}>
-            {scrut && (
-              <ScrutCard
-                scrut={scrut}
-                showPosition={conversation.type === 'statement'}
-                onAvatarClick={(s) => setDetailScrut(s)}
-                autoPlayVoice={autoPlayVoice}
-                contextText={conversation.body}
-              />
+          <div
+            key={currentScrutId}
+            className={cn(
+              'absolute inset-0 flex flex-col items-center overflow-y-auto no-scrollbar px-4 pt-1 pb-24',
+              contentAnim
             )}
-            {scruts.length > 1 && (
-              <div className="mt-6 flex items-center justify-center gap-1 text-white/20 text-[11px] pointer-events-none select-none">
-                <span>↑</span><span className="tracking-wide">swipe for next</span>
-              </div>
-            )}
+          >
+            <div className="w-full max-w-sm my-auto">
+              {scrut && (
+                <ScrutCard
+                  scrut={scrut}
+                  showPosition={conversation.type === 'statement'}
+                  onAvatarClick={(s) => setDetailScrut(s)}
+                  autoPlayVoice={autoPlayVoice}
+                  contextText={conversation.body}
+                />
+              )}
+              {scruts.length > 1 && (
+                <div className="mt-5 flex items-center justify-center gap-1 text-white/20 text-[11px] pointer-events-none select-none">
+                  <span>↑</span><span className="tracking-wide">swipe for next</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -273,16 +281,16 @@ export default function ConversationPage() {
         )}
       </div>
 
-      {/* Answer action — floating above the bottom navigation */}
+      {/* Answer action — compact floating pill above the bottom navigation */}
       <button
         type="button"
         onClick={() => setComposeOpen(true)}
         onMouseDown={e => e.stopPropagation()}
         onTouchStart={e => e.stopPropagation()}
-        className="fixed bottom-20 right-4 z-40 flex min-h-14 max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border border-white/15 bg-white px-5 text-sm font-semibold text-black shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-transform hover:scale-[1.02] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:bottom-6 sm:right-6"
+        className="fixed bottom-[4.8rem] right-4 z-40 flex h-10 items-center gap-1.5 rounded-full border border-white/20 bg-white/95 px-3.5 text-xs font-semibold text-black shadow-[0_8px_22px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:bottom-6 sm:right-6"
       >
-        <span className="text-lg leading-none">+</span>
-        {conversation.type === 'statement' ? 'Scrut your response' : 'Scrut your answer'}
+        <Plus size={13} className="stroke-[2.5]" />
+        <span>{conversation.type === 'statement' ? 'Respond' : 'Answer'}</span>
       </button>
 
       {composeOpen && (

@@ -20,12 +20,76 @@ import MePage from '@/pages/MePage';
 import ConversationPage from '@/pages/ConversationPage';
 import AdminPage from '@/pages/admin/AdminPage';
 import NotFound from '@/pages/NotFound';
+import { usePreferences } from '@/stores/preferencesStore';
+
+const FONT_MAP: Record<string, string> = {
+  sans: "'Inter', sans-serif",
+  serif: "'Lora', serif",
+  mono: "'JetBrains Mono', monospace",
+};
+
+const TEXT_SCALE_MAP: Record<string, number> = {
+  small: 0.9,
+  medium: 1,
+  large: 1.12,
+};
 
 function AppShell({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const {
+    fontFamily,
+    textSize,
+    setFontFamily,
+    setTextSize,
+    setAmbient,
+    setReducedMotion,
+    setMusicEnabled,
+    setMusicVolume,
+    setSelectedTrack,
+    setTypingSpeed,
+    setVoiceVolume,
+    setTypingSoundEnabled,
+  } = usePreferences();
+
   const [tracks, setTracks] = useState<{ id: string; title: string; artist?: string; url: string }[]>([]);
   useEffect(() => {
     supabase.from('music_tracks').select('id, title, artist, url').eq('is_active', true).then(({ data }) => setTracks(data ?? []));
   }, []);
+
+  // Apply typography preference immediately to document root
+  useEffect(() => {
+    const fontCss = FONT_MAP[fontFamily] || FONT_MAP.sans;
+    document.documentElement.style.setProperty('--scruttin-font', fontCss);
+  }, [fontFamily]);
+
+  // Apply text scale preference immediately to document root
+  useEffect(() => {
+    const scale = TEXT_SCALE_MAP[textSize] ?? 1;
+    document.documentElement.style.setProperty('--scruttin-text-scale', String(scale));
+  }, [textSize]);
+
+  // Sync DB-stored preferences for signed in user across devices and sessions
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('user_preferences')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!data) return;
+        if (data.ambient) setAmbient(data.ambient);
+        if (data.reduced_motion !== undefined) setReducedMotion(data.reduced_motion);
+        if (data.music_enabled !== undefined) setMusicEnabled(data.music_enabled);
+        if (data.music_volume !== undefined) setMusicVolume(data.music_volume);
+        if (data.selected_track_id) setSelectedTrack(data.selected_track_id);
+        if (data.font_family) setFontFamily(data.font_family);
+        if (data.text_size) setTextSize(data.text_size);
+        if (data.typing_speed) setTypingSpeed(data.typing_speed);
+        if (data.voice_volume !== undefined) setVoiceVolume(data.voice_volume);
+        if (data.typing_sound_enabled !== undefined) setTypingSoundEnabled(data.typing_sound_enabled);
+      });
+  }, [user, setAmbient, setReducedMotion, setMusicEnabled, setMusicVolume, setSelectedTrack, setFontFamily, setTextSize, setTypingSpeed, setVoiceVolume, setTypingSoundEnabled]);
 
   useEffect(() => {
     const syncOverlayState = () => {
@@ -42,7 +106,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-scruttin-base text-scruttin-text font-sans">
+    <div className="relative min-h-screen w-full overflow-hidden bg-scruttin-base text-scruttin-text">
       <AmbientBackground />
       <MusicPlayer tracks={tracks} />
       <div className="relative z-10 flex flex-col min-h-screen">
@@ -93,6 +157,8 @@ export default function App() {
 
               {/* Auth required */}
               <Route path="/me" element={<AppShell><Protected><MePage /></Protected></AppShell>} />
+              <Route path="/me/activity" element={<AppShell><Protected><MePage /></Protected></AppShell>} />
+              <Route path="/activity" element={<AppShell><Protected><MePage /></Protected></AppShell>} />
               <Route path="/admin" element={<Protected><AdminPage /></Protected>} />
 
               <Route path="*" element={<NotFound />} />

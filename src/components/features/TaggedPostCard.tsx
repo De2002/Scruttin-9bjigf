@@ -326,7 +326,7 @@ export default function TaggedPostCard({
 
           {/* Post Content Body */}
           {post.text && (
-            <p className="text-[15px] leading-[1.55] text-[#f2f4f8] whitespace-pre-line font-sans mb-3 select-text font-normal tracking-[-0.01em]">
+            <p className="text-[15px] leading-[1.55] text-[#f2f4f8] whitespace-pre-line mb-3 select-text font-normal tracking-[-0.01em]">
               {formattedText}
             </p>
           )}

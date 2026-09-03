@@ -1,81 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Sparkles,
   Volume2,
-  Mic,
+  Mic2,
   MessageSquare,
   Users,
   Compass,
   ArrowRight,
   ChevronDown,
-  Globe,
   Radio,
   Flame,
-  Layers,
-  Heart,
-  Repeat2,
-  ShieldCheck,
   CheckCircle2,
+  Sparkles,
+  Play,
+  Pause,
+  Clock,
+  HelpCircle,
+  Feather,
+  Globe,
+  Quote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MOCK_USERS } from '@/constants/mockData';
 
-// Unsplash curated atmospheric & real human portraits
-const HERO_IMAGES = [
-  'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1600&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1504703395950-b89145a5425b?w=1600&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1600&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=1600&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=1600&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=1600&q=80&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=1600&q=80&auto=format&fit=crop',
-];
+// Atmospheric Unsplash imagery for mood backgrounds
+const HERO_BACKGROUND =
+  'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=1600&q=80&auto=format&fit=crop';
 
-const LIVE_CONVERSATION_PREVIEWS = [
+const SAMPLE_QUESTIONS = [
   {
     topic: 'Life Experience',
     badge: 'Scruttin Asks',
     question: "What's something adulthood never prepared you for?",
-    perspectivesCount: 48,
-    countriesCount: 14,
-    sampleQuote: '“You realize everyone is improvising at the exact same time.”',
-    author: 'Amina Kalu',
-    location: 'Lagos, Nigeria',
+    sampleAnswer:
+      "You realize almost everyone is improvising at the exact same time. Nobody is as in control as they appear on the outside.",
     hasVoice: true,
+    author: 'Founding Voice',
+    city: 'Kampala',
+    path: '/dive',
   },
   {
-    topic: 'Philosophy & Society',
+    topic: 'Society & Culture',
     badge: 'Statement',
-    question: 'Privacy is no longer a right — it has become an expensive luxury.',
-    perspectivesCount: 32,
-    countriesCount: 9,
-    sampleQuote: '“When convenience became the default currency, privacy was the first toll.”',
-    author: 'Daniel Rocha',
-    location: 'São Paulo, Brazil',
+    question: 'Privacy is no longer a default right — it has become a luxury item.',
+    sampleAnswer:
+      "When convenience became the primary currency of the digital age, personal quiet and anonymity became the first tolls.",
     hasVoice: true,
+    author: 'Early Contributor',
+    city: 'Nairobi',
+    path: '/dive',
   },
   {
-    topic: 'Modern Culture',
+    topic: 'Mind & Habits',
     badge: 'From the Crowd',
-    question: 'What is something you stopped caring about as you got older?',
-    perspectivesCount: 65,
-    countriesCount: 19,
-    sampleQuote: '“Explaining myself to people committed to misunderstanding me.”',
-    author: 'Lena Weber',
-    location: 'Berlin, Germany',
+    question: 'What is something you stopped caring about as you grew older?',
+    sampleAnswer:
+      "Trying to prove myself in rooms where my presence was already questioned. Energy is too finite to spend on performative validation.",
     hasVoice: false,
-  },
-  {
-    topic: 'Human Connection',
-    badge: 'Scruttin Asks',
-    question: 'What makes a conversation unforgettable to you?',
-    perspectivesCount: 41,
-    countriesCount: 12,
-    sampleQuote: '“When neither person feels the need to perform or impress.”',
-    author: 'Joel Tetteh',
-    location: 'Accra, Ghana',
-    hasVoice: true,
+    author: 'Open Perspective',
+    city: 'London',
+    path: '/dive',
   },
 ];
 
@@ -83,108 +66,133 @@ const PLATFORM_PILLARS = [
   {
     id: 'stream',
     title: 'The Vertical Stream',
-    tagline: 'Swipe through raw human thoughts',
+    tagline: 'Swipe card by card',
     description:
-      'Immersive, full-screen cards revealing genuine perspectives one sentence or voice note at a time. No algorithmic doomscrolling or clickbait — just pure human answers.',
+      'Immersive, single-thought cards revealing genuine perspectives one voice note or reflection at a time. No infinite doomscrolling or clickbait — just human answers.',
     icon: Radio,
-    color: 'from-amber-500/20 to-orange-500/10',
-    border: 'border-amber-500/30',
-    badge: 'Core Experience',
+    color: 'border-amber-500/30 bg-amber-500/[0.04]',
+    link: '/stream',
+    cta: 'Open the Stream',
   },
   {
     id: 'dive',
     title: 'The Dive Matrix',
-    tagline: 'Scruttin Asks, From the Crowd & Statements',
+    tagline: 'Questions, Crowd Takes & Statements',
     description:
-      'Explore deep questions seeded by the platform, authentic inquiries posted once daily by real people, or debate bold statements with structured agree/disagree stances.',
+      'Explore deep prompts seeded daily, submit inquiries to the crowd, or debate bold statements with structured agree/disagree stances.',
     icon: Compass,
-    color: 'from-sky-500/20 to-blue-500/10',
-    border: 'border-sky-500/30',
-    badge: 'Deep Discovery',
+    color: 'border-sky-500/30 bg-sky-500/[0.04]',
+    link: '/dive',
+    cta: 'Browse Conversations',
   },
   {
     id: 'tagged',
-    title: 'Tagged (The Other Side)',
-    tagline: 'Tag along to be taken through someone’s world',
+    title: 'Tagged (The Original Feed)',
+    tagline: 'Tag along to creator journeys',
     description:
-      'A dedicated original feed separate from the stream. Step into creators’ worlds: share personal reflections, attach photography snapshots, atmospheric GIFs, and custom mood stickers.',
+      'A dedicated space separate from the rapid stream. Share personal reflections, interactive community polls, and original media.',
     icon: Users,
-    color: 'from-emerald-500/20 to-teal-500/10',
-    border: 'border-emerald-500/30',
-    badge: 'Original Feed',
+    color: 'border-emerald-500/30 bg-emerald-500/[0.04]',
+    link: '/tagged',
+    cta: 'Explore Tagged',
   },
 ];
 
-const FAQ_ITEMS = [
+const EARLY_REASONS = [
   {
-    q: 'What is a "Scrut"?',
-    a: 'A Scrut is your spoken voice note or written perspective submitted in response to a question or statement. It is raw, personal, and focused on depth rather than virality.',
+    icon: Feather,
+    title: 'Help shape the culture',
+    description:
+      'The earliest voices define what a community feels like. We are building a space characterized by curiosity and depth rather than cynicism.',
   },
   {
-    q: 'How does Scruttin differ from traditional social media?',
-    a: 'We stripped away vanity follower counts, superficial photos, and endless outrage algorithms. Instead, you get question-centric conversations, authentic audio answers, and ambient soundscapes.',
+    icon: Sparkles,
+    title: 'Claim your handle early',
+    description:
+      'Secure your personal username and establish your profile before the platform opens up to the broader web.',
+  },
+  {
+    icon: ShieldCheckIcon,
+    title: 'Zero outrage algorithms',
+    description:
+      'There is no algorithmic feed engineered to anger you or maximize screen time. Conversations are chronologically clean and thoughtful.',
+  },
+  {
+    icon: Globe,
+    title: 'No friction to explore',
+    description:
+      'You do not need an account or email to browse. Jump straight into the stream, read takes, and listen to voice notes immediately.',
+  },
+];
+
+function ShieldCheckIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+const FAQ_ITEMS = [
+  {
+    q: "We notice there aren't many users yet — what is Scruttin's story?",
+    a: "You're here right at the beginning! Scruttin was created as an antidote to modern social feeds that reward outrage, endless selfies, and algorithmic doomscrolling. We're launching intentionally small, welcoming curious thinkers and early voices to start the first genuine conversations.",
+  },
+  {
+    q: 'What is a "Scrut"?',
+    a: 'A Scrut is your response to a question or statement. It can be a short written reflection (up to 300 characters) or a raw voice note (up to 60 seconds). It is concise, direct, and focused on perspective rather than performance.',
   },
   {
     q: 'Can I listen and read without creating an account?',
-    a: 'Yes! The entire stream, question archive, and Tagged feed are freely browseable without an account. You only need to sign in when you want to answer, record voice notes, or tag creators.',
+    a: 'Yes! The entire stream, question archive, and Tagged feed are freely browseable without an account. You only need to sign in when you want to post your own answers, vote in community polls, or tag creators.',
   },
   {
-    q: 'What does "Tag Along" mean?',
-    a: 'Tagging along is our thoughtful alternative to "following". It connects you directly to creators and voices whose perspectives resonate with you, building your custom Tagged feed.',
+    q: 'How does the voice recording work?',
+    a: 'Tap the voice option on any answer card or conversation, press record, and speak your mind. It keeps conversations warm, natural, and human — just like talking to someone across a table.',
+  },
+  {
+    q: 'How can I support or contribute as an early user?',
+    a: 'Answer a question that sparks your interest, state a bold claim on the Dive page, or invite a friend who enjoys thoughtful discussions. Your early presence genuinely shapes the soul of this project.',
   },
 ];
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const [imgIndex, setImgIndex] = useState(0);
-  const [prevImgIndex, setPrevImgIndex] = useState<number | null>(null);
-  const [activePreviewIdx, setActivePreviewIdx] = useState(0);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [selectedPromptIdx, setSelectedPromptIdx] = useState(0);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  // Crossfade hero images smoothly every 6s
-  useEffect(() => {
-    const t = setInterval(() => {
-      setPrevImgIndex(imgIndex);
-      setImgIndex((i) => (i + 1) % HERO_IMAGES.length);
-    }, 6000);
-    return () => clearInterval(t);
-  }, [imgIndex]);
+  const activePrompt = SAMPLE_QUESTIONS[selectedPromptIdx];
 
-  // Cycle preview card every 4.5s
-  useEffect(() => {
-    const t = setInterval(() => {
-      setActivePreviewIdx((prev) => (prev + 1) % LIVE_CONVERSATION_PREVIEWS.length);
-    }, 4500);
-    return () => clearInterval(t);
-  }, []);
-
-  const activePreview = LIVE_CONVERSATION_PREVIEWS[activePreviewIdx];
+  const toggleSampleAudio = () => {
+    setIsPlayingAudio((prev) => !prev);
+  };
 
   return (
     <div className="min-h-screen bg-[#09090f] text-white selection:bg-white/20 selection:text-white font-sans">
       {/* ===================== HERO SECTION ===================== */}
       <section className="relative min-h-[92vh] flex flex-col justify-between overflow-hidden border-b border-white/[0.08]">
-        {/* Background Image Carousel with Atmospheric Gradient */}
-        {HERO_IMAGES.map((src, i) => (
-          <img
-            key={src}
-            src={src}
-            alt="Scruttin global voices"
-            aria-hidden
-            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 pointer-events-none select-none"
-            style={{
-              opacity: i === imgIndex ? 0.38 : i === prevImgIndex ? 0 : 0,
-              zIndex: i === imgIndex ? 1 : i === prevImgIndex ? 0 : -1,
-            }}
-          />
-        ))}
-
-        {/* Ambient Dark Gradient Wash */}
+        {/* Atmospheric Background with Deep Tint */}
         <div
-          className="absolute inset-0 z-10 pointer-events-none"
+          className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-20"
+          style={{ backgroundImage: `url(${HERO_BACKGROUND})` }}
+        />
+        <div
+          className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              'linear-gradient(to bottom, rgba(9,9,15,0.7) 0%, rgba(9,9,15,0.4) 30%, rgba(9,9,15,0.85) 75%, rgba(9,9,15,1) 100%)',
+              'linear-gradient(to bottom, rgba(9,9,15,0.75) 0%, rgba(9,9,15,0.85) 40%, rgba(9,9,15,0.98) 85%, rgba(9,9,15,1) 100%)',
           }}
         />
 
@@ -211,7 +219,7 @@ export default function LandingPage() {
               <span className="text-white font-bold text-lg tracking-tight flex items-center gap-1.5 leading-none">
                 Scruttin
               </span>
-              <span className="text-[10px] text-white/40 tracking-wider uppercase font-mono">
+              <span className="text-[10px] text-white/45 tracking-wider uppercase font-mono">
                 Less showing. More saying.
               </span>
             </div>
@@ -239,29 +247,30 @@ export default function LandingPage() {
         </header>
 
         {/* Hero Central Pitch */}
-        <div className="relative z-20 max-w-6xl mx-auto w-full px-5 sm:px-8 py-12 flex-1 flex flex-col lg:flex-row items-center justify-between gap-12">
-          {/* Left Column: Core Value Proposition */}
+        <div className="relative z-20 max-w-6xl mx-auto w-full px-5 sm:px-8 py-10 sm:py-14 flex-1 flex flex-col lg:flex-row items-center justify-between gap-10">
+          {/* Left Column: Honest, Grounded Proposition */}
           <div className="max-w-xl text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.08] border border-white/15 backdrop-blur-md mb-6">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-medium text-white/80">
-                A text &amp; voice platform for real human perspective
+            {/* Early Launch Indicator */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-400/[0.08] border border-amber-400/25 backdrop-blur-md mb-6">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-xs font-semibold text-amber-200/90 tracking-wide">
+                Early Days · Help us start the conversation
               </span>
             </div>
 
-            <h1 className="font-serif font-extrabold text-white text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.1] mb-5">
-              The world isn&apos;t a feed. <br />
+            <h1 className="font-serif font-extrabold text-white text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.12] mb-5">
+              The web doesn&apos;t need another feed. <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-white/60">
-                It&apos;s a conversation.
+                It needs real human voices.
               </span>
             </h1>
 
-            <p className="text-base sm:text-lg text-white/65 leading-relaxed mb-8 max-w-lg">
-              Scruttin replaces vanity metrics, endless selfies, and rage algorithms with genuine questions, authentic voice notes, and deep perspectives from every corner of the planet.
+            <p className="text-base sm:text-lg text-white/70 leading-relaxed mb-8 max-w-lg font-normal">
+              We are brand new. No algorithms engineering your outrage, no follower counts, and no vanity filters. Just simple questions, raw voice notes, and honest perspectives.
             </p>
 
             {/* CTA Group */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 mb-8">
               <button
                 type="button"
                 id="hero-main-cta"
@@ -274,122 +283,185 @@ export default function LandingPage() {
 
               <button
                 type="button"
-                id="hero-tagged-cta"
-                onClick={() => navigate('/tagged')}
+                id="hero-auth-cta"
+                onClick={() => navigate('/auth')}
                 className="px-6 py-4 rounded-2xl border border-white/20 bg-white/[0.04] text-white font-medium text-[15px] hover:border-white/40 hover:bg-white/[0.08] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                <Users size={16} className="text-emerald-400" />
-                <span>Tagged Microblog</span>
+                <Feather size={16} className="text-amber-300" />
+                <span>Join as a Founding Voice</span>
               </button>
             </div>
 
-            {/* Quick Micro Badges */}
-            <div className="flex items-center flex-wrap gap-4 text-xs text-white/40">
+            {/* Honest Micro Highlights */}
+            <div className="flex items-center flex-wrap gap-4 text-xs text-white/50">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 size={13} className="text-emerald-400" /> No account needed to listen
+                <CheckCircle2 size={13} className="text-emerald-400" /> Free &amp; open to browse
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 size={13} className="text-emerald-400" /> Spoken audio or short text
               </span>
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 size={13} className="text-emerald-400" /> 1 question daily per person
               </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 size={13} className="text-emerald-400" /> Authentic voice recordings
-              </span>
             </div>
           </div>
 
-          {/* Right Column: Interactive Live Card Preview */}
+          {/* Right Column: Interactive Prompt Showcase */}
           <div className="w-full max-w-md">
+            {/* Prompt Selector Pills */}
+            <div className="flex items-center gap-1.5 mb-3 overflow-x-auto no-scrollbar pb-1">
+              {SAMPLE_QUESTIONS.map((q, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setSelectedPromptIdx(idx);
+                    setIsPlayingAudio(false);
+                  }}
+                  className={cn(
+                    'px-3 py-1 rounded-full text-xs font-medium transition-all shrink-0',
+                    idx === selectedPromptIdx
+                      ? 'bg-white text-black font-semibold shadow-sm'
+                      : 'bg-white/5 text-white/50 hover:text-white/80 hover:bg-white/10'
+                  )}
+                >
+                  {q.topic}
+                </button>
+              ))}
+            </div>
+
+            {/* Interactive Preview Card */}
             <div className="relative rounded-3xl border border-white/15 bg-white/[0.04] backdrop-blur-xl p-6 shadow-2xl overflow-hidden transition-all duration-300 hover:border-white/25">
-              {/* Top Card Bar */}
+              {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/80 border border-white/10">
-                    {activePreview.badge}
+                    {activePrompt.badge}
                   </span>
-                  <span className="text-xs text-white/40 font-medium">#{activePreview.topic}</span>
+                  <span className="text-xs text-white/40 font-medium">Daily Prompt</span>
                 </div>
-                <span className="flex items-center gap-1 text-[11px] text-emerald-400/90 font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  Live Now
+                <span className="text-[11px] text-amber-300 font-mono flex items-center gap-1">
+                  <Clock size={11} /> Open for answers
                 </span>
               </div>
 
-              {/* The Active Question */}
-              <h3 className="font-serif font-bold text-white text-xl sm:text-2xl leading-snug mb-4">
-                “{activePreview.question}”
+              {/* The Question */}
+              <h3 className="font-serif font-bold text-white text-xl sm:text-2xl leading-snug mb-5">
+                “{activePrompt.question}”
               </h3>
 
-              {/* Sample Perspective Bubble */}
-              <div className="rounded-2xl bg-white/[0.06] border border-white/10 p-4 mb-4">
-                <p className="text-sm font-sans text-white/90 italic leading-relaxed mb-3">
-                  {activePreview.sampleQuote}
-                </p>
-                <div className="flex items-center justify-between text-xs">
+              {/* Sample Response Box */}
+              <div className="rounded-2xl bg-white/[0.06] border border-white/10 p-4 mb-5">
+                <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 flex items-center justify-center font-bold text-[10px] text-white">
-                      {activePreview.author.charAt(0)}
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center font-bold text-[10px] text-black">
+                      {activePrompt.author.charAt(0)}
                     </div>
-                    <span className="font-medium text-white/80">{activePreview.author}</span>
+                    <span className="text-xs font-medium text-white/80">{activePrompt.author}</span>
+                    <span className="text-[10px] text-white/40">· {activePrompt.city}</span>
                   </div>
-                  <span className="text-white/40 flex items-center gap-1 text-[11px]">
-                    <Globe size={11} /> {activePreview.location}
-                  </span>
-                </div>
-              </div>
 
-              {/* Card Footer Metrics */}
-              <div className="flex items-center justify-between border-t border-white/10 pt-3 text-xs text-white/50">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <MessageSquare size={13} /> {activePreview.perspectivesCount} perspectives
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Globe size={13} /> {activePreview.countriesCount} countries
-                  </span>
+                  {activePrompt.hasVoice && (
+                    <button
+                      type="button"
+                      onClick={toggleSampleAudio}
+                      className={cn(
+                        'flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all',
+                        isPlayingAudio
+                          ? 'bg-emerald-500 text-black shadow-sm'
+                          : 'bg-white/10 text-emerald-300 hover:bg-white/15 border border-white/10'
+                      )}
+                    >
+                      {isPlayingAudio ? <Pause size={10} /> : <Play size={10} />}
+                      <span>{isPlayingAudio ? 'Listening...' : 'Play voice note'}</span>
+                    </button>
+                  )}
                 </div>
-                {activePreview.hasVoice && (
-                  <span className="flex items-center gap-1 text-emerald-400 font-medium text-[11px]">
-                    <Volume2 size={12} /> Audio included
-                  </span>
+
+                <p className="text-sm font-sans text-white/85 italic leading-relaxed">
+                  “{activePrompt.sampleAnswer}”
+                </p>
+
+                {isPlayingAudio && (
+                  <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center gap-2 text-xs text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="font-mono text-[11px]">Audio preview active · Raw voice recording</span>
+                  </div>
                 )}
               </div>
-            </div>
 
-            {/* Preview Carousel Dot Indicators */}
-            <div className="flex items-center justify-center gap-1.5 mt-4">
-              {LIVE_CONVERSATION_PREVIEWS.map((_, idx) => (
+              {/* Action */}
+              <div className="flex items-center justify-between border-t border-white/10 pt-4">
+                <div className="text-xs text-white/40">
+                  <span>Have a perspective on this?</span>
+                </div>
                 <button
-                  key={idx}
-                  onClick={() => setActivePreviewIdx(idx)}
-                  className={cn(
-                    'h-1.5 rounded-full transition-all duration-300',
-                    idx === activePreviewIdx ? 'w-6 bg-white' : 'w-1.5 bg-white/20 hover:bg-white/40'
-                  )}
-                  aria-label={`Preview card ${idx + 1}`}
-                />
-              ))}
+                  type="button"
+                  onClick={() => navigate('/stream')}
+                  className="text-xs font-semibold text-white hover:text-amber-300 flex items-center gap-1.5 transition-colors group"
+                >
+                  <span>Answer this question</span>
+                  <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Scroll Prompt */}
-        <div className="relative z-20 pb-4 flex justify-center text-white/30 text-xs gap-1 items-center animate-bounce">
-          <span>Scroll to learn how it works</span>
-          <ChevronDown size={14} />
+        <div className="relative z-20 pb-4 flex justify-center text-white/30 text-xs gap-1 items-center">
+          <span>Explore how Scruttin works below</span>
+          <ChevronDown size={14} className="animate-bounce" />
         </div>
       </section>
 
-      {/* ===================== WHAT IS SCRUTTIN (3 PILLARS) ===================== */}
+      {/* ===================== WHY START NOW (FOUNDING COMMUNITY) ===================== */}
+      <section className="py-20 px-5 sm:px-8 max-w-6xl mx-auto border-b border-white/[0.08]">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-white/60 uppercase tracking-wider mb-3">
+            <Sparkles size={12} className="text-amber-400" />
+            <span>The Ground Floor</span>
+          </div>
+          <h2 className="font-serif font-bold text-3xl sm:text-4xl text-white tracking-tight leading-tight mb-4">
+            Why join a platform on day one?
+          </h2>
+          <p className="text-white/65 text-sm sm:text-base leading-relaxed">
+            The early days of any community are rare. Before algorithms take over, there is room for authentic connection and honest discourse.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {EARLY_REASONS.map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={idx}
+                className="rounded-3xl border border-white/10 bg-white/[0.025] p-6 hover:bg-white/[0.05] hover:border-white/20 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="h-11 w-11 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-amber-300 mb-4">
+                    <Icon size={20} />
+                  </div>
+                  <h3 className="font-semibold text-white text-base mb-2">{item.title}</h3>
+                  <p className="text-sm text-white/60 leading-relaxed">{item.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ===================== THE THREE SPACES ===================== */}
       <section className="py-20 px-5 sm:px-8 max-w-6xl mx-auto">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <p className="text-xs uppercase tracking-[0.2em] font-semibold text-white/40 mb-3">
-            Architected for Depth
+            Designed for Clarity
           </p>
           <h2 className="font-serif font-bold text-3xl sm:text-4xl text-white tracking-tight leading-tight mb-4">
-            Three interconnected ways to experience the world.
+            Three simple spaces to explore.
           </h2>
           <p className="text-white/60 text-sm sm:text-base leading-relaxed">
-            Scruttin blends swipeable question cards, rich participatory prompt categorizations, and an open microblog for creator discourse.
+            Everything in Scruttin is structured around questions, audio answers, and creators.
           </p>
         </div>
 
@@ -401,17 +473,17 @@ export default function LandingPage() {
               <div
                 key={pillar.id}
                 className={cn(
-                  'relative rounded-3xl border bg-white/[0.025] p-7 flex flex-col justify-between transition-all duration-300 hover:bg-white/[0.05] hover:scale-[1.01]',
-                  pillar.border
+                  'relative rounded-3xl border p-7 flex flex-col justify-between transition-all duration-300 hover:scale-[1.01]',
+                  pillar.color
                 )}
               >
                 <div>
                   <div className="flex items-center justify-between mb-5">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.06] border border-white/10 text-white">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.08] border border-white/15 text-white">
                       <Icon size={22} />
                     </div>
                     <span className="text-[10px] font-mono uppercase tracking-wider text-white/40 px-2 py-0.5 rounded-full bg-white/5 border border-white/5">
-                      {pillar.badge}
+                      Space {pillar.id === 'stream' ? '01' : pillar.id === 'dive' ? '02' : '03'}
                     </span>
                   </div>
 
@@ -422,13 +494,13 @@ export default function LandingPage() {
                   <p className="text-sm text-white/70 leading-relaxed">{pillar.description}</p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-white/8">
+                <div className="mt-8 pt-4 border-t border-white/10">
                   <button
                     type="button"
-                    onClick={() => navigate(`/${pillar.id}`)}
-                    className="text-xs font-semibold text-white/90 hover:text-white flex items-center gap-1.5 group"
+                    onClick={() => navigate(pillar.link)}
+                    className="text-xs font-semibold text-white hover:text-amber-300 flex items-center gap-1.5 transition-colors group"
                   >
-                    <span>Explore {pillar.title}</span>
+                    <span>{pillar.cta}</span>
                     <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
@@ -438,48 +510,58 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===================== VOICES FROM THE WORLD (COMMUNITY) ===================== */}
-      <section className="py-16 px-5 sm:px-8 border-y border-white/[0.08] bg-white/[0.015]">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] font-semibold text-white/40 mb-2">
-                Global Network
-              </p>
-              <h2 className="font-serif font-bold text-2xl sm:text-3xl text-white">
-                Real voices across 40+ countries.
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/tagged')}
-              className="text-xs font-medium text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
-            >
-              <span>See all creators on Tagged</span>
-              <ArrowRight size={12} />
-            </button>
+      {/* ===================== THE MANIFESTO ===================== */}
+      <section className="py-20 px-5 sm:px-8 border-y border-white/[0.08] bg-white/[0.015]">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <Quote className="h-8 w-8 mx-auto text-amber-400/60 mb-3" />
+            <h2 className="font-serif font-bold text-2xl sm:text-3xl text-white">
+              A quieter web for genuine reflection.
+            </h2>
           </div>
 
-          {/* User Showcase Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {MOCK_USERS.slice(0, 6).map((u) => (
-              <div
-                key={u.id}
-                onClick={() => navigate('/tagged')}
-                className="group cursor-pointer rounded-2xl border border-white/8 bg-white/[0.02] p-3 text-center transition-all duration-200 hover:bg-white/[0.06] hover:border-white/15"
-              >
-                <div className="relative mx-auto mb-2.5 w-12 h-12 rounded-full overflow-hidden border border-white/15 group-hover:scale-105 transition-transform">
-                  <img src={u.avatar_url} alt={u.display_name} className="w-full h-full object-cover" />
-                </div>
-                <h4 className="font-semibold text-white text-xs truncate group-hover:underline">
-                  {u.display_name}
-                </h4>
-                <p className="text-[10px] text-white/40 truncate mt-0.5">{u.city || u.country}</p>
-                <div className="mt-2 text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-white/60 border border-white/5 truncate">
-                  {u.bio?.split('.')[0] || 'Voice Contributor'}
-                </div>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* The Performance Web */}
+            <div className="rounded-3xl border border-rose-500/20 bg-rose-500/[0.02] p-6 sm:p-7">
+              <span className="text-xs font-mono uppercase tracking-wider text-rose-400 font-bold block mb-3">
+                The Performance Web
+              </span>
+              <ul className="space-y-3 text-sm text-white/60">
+                <li className="flex items-start gap-2">
+                  <span className="text-rose-400 font-bold">✕</span> Endless visual comparison and curated selfies
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-rose-400 font-bold">✕</span> Algorithms rewarded by conflict and rage
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-rose-400 font-bold">✕</span> Follower counts dictating who gets heard
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-rose-400 font-bold">✕</span> Infinite scroll engineered to keep you hooked
+                </li>
+              </ul>
+            </div>
+
+            {/* The Scruttin Way */}
+            <div className="rounded-3xl border border-emerald-500/25 bg-emerald-500/[0.03] p-6 sm:p-7">
+              <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 font-bold block mb-3">
+                The Scruttin Way
+              </span>
+              <ul className="space-y-3 text-sm text-white/80">
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span> Raw voice notes and 300-character thoughts
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span> Question-driven discussions that provoke depth
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span> Perspectives judged on content, not clout
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span> Ambient pace that lets you pause and listen
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </section>
@@ -488,7 +570,7 @@ export default function LandingPage() {
       <section className="py-20 px-5 sm:px-8 max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <p className="text-xs uppercase tracking-[0.2em] font-semibold text-white/40 mb-2">
-            Clear Answers
+            Honest Answers
           </p>
           <h2 className="font-serif font-bold text-3xl text-white">Frequently Asked Questions</h2>
         </div>
@@ -509,7 +591,7 @@ export default function LandingPage() {
                   <span>{item.q}</span>
                   <ChevronDown
                     size={16}
-                    className={cn('text-white/40 transition-transform duration-200', isOpen && 'rotate-180 text-white')}
+                    className={cn('text-white/40 transition-transform duration-200 shrink-0', isOpen && 'rotate-180 text-white')}
                   />
                 </button>
                 {isOpen && (
@@ -544,10 +626,10 @@ export default function LandingPage() {
           </div>
 
           <h2 className="font-serif font-bold text-3xl sm:text-4xl text-white mb-4">
-            Ready to hear what the world really thinks?
+            Be one of our first voices.
           </h2>
           <p className="text-white/60 text-sm sm:text-base mb-8 max-w-lg mx-auto">
-            Step into the stream. Listen to voices from every continent. Share your perspective when you&apos;re ready.
+            Browse without an account or claim your handle to answer today&apos;s prompts. Every great space begins with a single conversation.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5">
@@ -565,7 +647,7 @@ export default function LandingPage() {
               onClick={() => navigate('/auth')}
               className="w-full sm:w-auto px-8 py-4 rounded-2xl border border-white/20 text-white font-medium text-sm hover:border-white/40 hover:bg-white/5 active:scale-95 transition-all"
             >
-              Create free account
+              Claim your handle
             </button>
           </div>
 

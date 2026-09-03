@@ -6,7 +6,8 @@ import TextReveal from './TextReveal';
 import VoiceScrutCard from './VoiceScrutCard';
 import ResonatesButton from './ResonatesButton';
 import ReportModal from './ReportModal';
-import { Flag, UserRound } from 'lucide-react';
+import MediaLightboxModal from './MediaLightboxModal';
+import { Flag, UserRound, Maximize2, ChevronUp, ChevronDown, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
@@ -53,79 +54,147 @@ function wordCount(text: string | null | undefined): number {
   return text.trim().split(/\s+/).length;
 }
 
-/** ✦ peek / ↑ tuck — inline attachment reveal */
-function PeekAttachment({ url }: { url: string }) {
-  const [wiggled, setWiggled] = useState(false);
-  // Attachments are visible on text scruts immediately; the control can tuck them away.
-  const [open, setOpen] = useState(true);
-  const [tucking, setTucking] = useState(false);
-  const [visible, setVisible] = useState(true);
-  const btnRef = useRef<HTMLButtonElement>(null);
+/** Reworked modern social-platform media attachment for text scruts (GIF & Image) */
+function ScrutMediaAttachment({
+  url,
+  onZoom,
+  isShort,
+}: {
+  url: string;
+  onZoom: (url: string) => void;
+  isShort?: boolean;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // One-time wiggle on mount
-  useEffect(() => {
-    const timer = window.setTimeout(() => setWiggled(true), 80);
-    return () => window.clearTimeout(timer);
-  }, []);
+  const isGif =
+    url.toLowerCase().includes('.gif') ||
+    url.toLowerCase().includes('giphy') ||
+    url.toLowerCase().includes('tenor');
 
-  const isGif = url.toLowerCase().includes('.gif') || url.toLowerCase().includes('gif');
+  if (loadError) {
+    return (
+      <div
+        className="my-2 p-3 rounded-2xl border border-white/10 bg-black/30 flex items-center justify-between text-xs text-white/50 select-none"
+        data-no-swipe
+      >
+        <div className="flex items-center gap-2">
+          <ImageIcon size={14} className="text-white/40" />
+          <span>Attached media preview unavailable</span>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setLoadError(false);
+            setIsLoaded(false);
+          }}
+          className="text-white/75 hover:text-white underline text-xs font-medium"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
-  const handleTap = (e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation();
-    if (open) {
-      // Tuck away
-      setTucking(true);
-      window.setTimeout(() => {
-        setOpen(false);
-        setTucking(false);
-        setVisible(false);
-      }, 190);
-    } else {
-      setOpen(true);
-      // Small delay so DOM renders before animating
-      window.setTimeout(() => setVisible(true), 10);
-    }
-  };
+  if (collapsed) {
+    return (
+      <div className="my-2 flex items-center justify-start select-none" data-no-swipe>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setCollapsed(false);
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/10 hover:bg-white/15 border border-white/15 text-white/80 transition-all active:scale-95 shadow-sm"
+          title="Expand attachment"
+        >
+          {isGif ? (
+            <span className="px-1.5 py-0.2 rounded bg-purple-500/30 text-purple-300 font-bold text-[9px] uppercase tracking-wider">
+              GIF
+            </span>
+          ) : (
+            <ImageIcon size={12} className="text-emerald-400" />
+          )}
+          <span>Show attachment</span>
+          <ChevronDown size={13} className="text-white/50" />
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-3 select-none" data-no-swipe>
-      {/* ✦ peek tab */}
-      <button
-        ref={btnRef}
-        type="button"
-        onClick={handleTap}
-        onTouchEnd={e => e.stopPropagation()}
-        className={cn(
-          'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium tracking-wide transition-colors',
-          'bg-white/5 border border-white/8 text-white/35 hover:text-white/55 hover:bg-white/8',
-          wiggled && !open && 'peek-wiggle-once'
-        )}
-        style={{ transformOrigin: 'left center' }}
-        aria-label={open ? 'Tuck attachment' : 'Peek at attachment'}
+    <div className="my-2.5 flex justify-center w-full select-none" data-no-swipe>
+      <div
+        className="relative max-w-full rounded-2xl overflow-hidden border border-white/15 bg-black/50 shadow-xl group/media cursor-pointer transition-all hover:border-white/25 active:scale-[0.99]"
+        onClick={(e) => {
+          e.stopPropagation();
+          onZoom(url);
+        }}
       >
-        <span className="text-[10px]">✦</span>
-        <span>{open ? '↑ tuck' : 'peek'}</span>
-      </button>
+        {/* Skeleton / loader */}
+        {!isLoaded && (
+          <div className="w-48 h-36 bg-white/5 animate-pulse flex items-center justify-center text-white/20">
+            <Sparkles size={16} className="animate-spin text-white/30" />
+          </div>
+        )}
 
-      {/* Attachment — slides down when open */}
-      {open && (
-        <div
+        {/* Media Image / GIF — natural hugging width without black horizontal letterbox wings */}
+        <img
+          src={url}
+          alt="Scrut attachment"
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setLoadError(true)}
           className={cn(
-            'mt-2 rounded-xl overflow-hidden',
-            visible && !tucking ? (isGif ? 'peek-reveal' : 'sticker-popin') : 'opacity-0',
-            tucking && 'peek-tuck'
+            'h-auto max-h-40 sm:max-h-52 w-auto max-w-full object-contain mx-auto transition-transform duration-300 group-hover/media:scale-[1.01]',
+            !isLoaded && 'hidden'
           )}
-          style={{ maxWidth: 240 }}
-        >
-          <img
-            src={url}
-            alt="attachment"
-            className="w-full h-auto rounded-xl object-contain"
-            style={{ maxHeight: 240, display: 'block' }}
-            draggable={false}
-          />
+          draggable={false}
+        />
+
+        {/* Top controls: minimize and zoom */}
+        <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-90 sm:opacity-0 sm:group-hover/media:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCollapsed(true);
+            }}
+            className="p-1 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md text-white/70 hover:text-white border border-white/15 transition-all"
+            title="Minimize attachment"
+            aria-label="Minimize attachment"
+          >
+            <ChevronUp size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onZoom(url);
+            }}
+            className="p-1 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md text-white/70 hover:text-white border border-white/15 transition-all flex items-center gap-1"
+            title="Fullscreen zoom"
+            aria-label="Expand image fullscreen"
+          >
+            <Maximize2 size={12} />
+          </button>
         </div>
-      )}
+
+        {/* Bottom badge */}
+        <div className="absolute bottom-2 left-2 flex items-center gap-1.5 pointer-events-none">
+          {isGif ? (
+            <span className="px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur-md border border-white/20 text-white font-bold text-[9px] tracking-wider uppercase shadow-md">
+              GIF
+            </span>
+          ) : (
+            <span className="px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur-md border border-white/15 text-white/80 font-medium text-[9px] shadow-sm flex items-center gap-1">
+              <ImageIcon size={10} className="text-emerald-400" />
+              Photo
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -133,6 +202,7 @@ function PeekAttachment({ url }: { url: string }) {
 export default function ScrutCard({ scrut, showPosition, onRevealComplete, className, onAvatarClick, autoPlayVoice = false, contextText }: Props) {
   const { user } = useAuth();
   const [reportOpen, setReportOpen] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const mapUrl = getMapUrl(scrut.user.country);
 
   // ── Voice only ──────────────────────────────────────────────────────────
@@ -178,90 +248,143 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
   // ── Text ────────────────────────────────────────────────────────────────
   const wc = wordCount(scrut.text);
   const isShort = wc < 30;
-  const avatarPx = isShort ? 56 : 40;
-  const floatWidth = avatarPx + 10;
 
   return (
-    <div className={cn('scrut-enter', className)}>
-      <div className="overflow-hidden relative">
-        {mapUrl && (
-          <img src={mapUrl} alt="" aria-hidden
-            className="absolute inset-0 m-auto pointer-events-none select-none"
-            style={{ width: isShort ? 110 : 140, height: isShort ? 110 : 140, objectFit: 'contain', opacity: 0.055, filter: 'invert(1) blur(0.4px)', zIndex: 0 }}
-          />
-        )}
+    <div className={cn('scrut-enter relative', className)}>
+      {/* Background country silhouette watermark */}
+      {mapUrl && (
+        <img
+          src={mapUrl}
+          alt=""
+          aria-hidden
+          className="absolute right-0 top-0 pointer-events-none select-none opacity-[0.05] invert blur-[0.3px]"
+          style={{ width: 110, height: 110, objectFit: 'contain', zIndex: 0 }}
+        />
+      )}
 
-        {/* Floating avatar — tap opens profile sheet */}
-        <div className="float-left mr-3 mb-2 flex flex-col items-center relative" style={{ width: floatWidth, zIndex: 1 }}>
-          <button
-            type="button"
-            aria-label={`View ${scrut.user.display_name ?? 'user'} profile`}
-            onClick={(e) => { e.stopPropagation(); onAvatarClick?.(scrut); }}
-            className="cursor-pointer rounded-xl transition-opacity hover:opacity-80 active:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          >
-            <UserAvatar user={scrut.user} size={isShort ? 'xl' : 'md'} shape="square" />
-          </button>
-          <p className="text-white/65 font-medium text-center mt-1.5 leading-tight w-full truncate px-0.5" style={{ fontSize: isShort ? 11 : 10 }}>
-            {scrut.user.display_name?.split(' ')[0] ?? '?'}
-          </p>
-          {scrut.user.country && (
-            <p className="text-white/30 text-center leading-none mt-0.5" style={{ fontSize: 9 }}>
-              {scrut.user.country}
-            </p>
-          )}
-        </div>
+      {/* Author & Context Header — clean unified top row, no float clipping */}
+      <div className="relative z-10 flex items-start gap-3 mb-3">
+        <button
+          type="button"
+          aria-label={`View ${scrut.user.display_name ?? 'user'} profile`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAvatarClick?.(scrut);
+          }}
+          className="shrink-0 group/avatar cursor-pointer rounded-2xl transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        >
+          <div className="relative p-0.5 rounded-2xl bg-gradient-to-b from-white/20 to-white/5 border border-white/10 shadow-sm">
+            <UserAvatar user={scrut.user} size="lg" shape="square" className="rounded-[14px]" />
+          </div>
+        </button>
 
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <p className="mb-1 text-sm font-semibold text-white/80">{scrut.user.display_name} <span className="font-normal text-white/45">on</span></p>
-          {contextText && <p className="mb-3 font-serif text-[17px] italic leading-7 text-white/55">“{contextText}”</p>}
-          {showPosition && scrut.position && (
-            <p className={cn('text-xs font-medium mb-1.5', positionColor[scrut.position])}>
-              {positionLabel[scrut.position]}
+        <div className="flex-1 min-w-0 pt-0.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAvatarClick?.(scrut);
+              }}
+              className="font-semibold text-white/90 text-sm hover:text-white transition-colors truncate text-left"
+            >
+              {scrut.user.display_name}
+            </button>
+            {scrut.user.country && (
+              <span className="text-[11px] text-white/40 font-medium tracking-wide">
+                · {scrut.user.country}
+              </span>
+            )}
+            {showPosition && scrut.position && (
+              <span
+                className={cn(
+                  'text-[10px] font-semibold px-2 py-0.5 rounded-full border tracking-wide uppercase',
+                  positionColor[scrut.position] === 'text-emerald-400' && 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300',
+                  positionColor[scrut.position] === 'text-amber-400' && 'bg-amber-500/10 border-amber-500/30 text-amber-300',
+                  positionColor[scrut.position] === 'text-rose-400' && 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                )}
+              >
+                {positionLabel[scrut.position]}
+              </span>
+            )}
+          </div>
+
+          {contextText && (
+            <p className="mt-1 font-serif text-xs sm:text-[13px] italic leading-snug text-white/45 line-clamp-2">
+              on “{contextText}”
             </p>
-          )}
-          {scrut.text && (
-            <TextReveal
-              text={scrut.text}
-              onComplete={onRevealComplete}
-              className="text-white/85 leading-[1.65] font-serif"
-              style={{ fontSize: isShort ? 17 : 15 }}
-            />
           )}
         </div>
       </div>
 
-      {/* ✦ peek attachment */}
-      {scrut.attachment_url && (
-        <div className="clear-both">
-          <PeekAttachment url={scrut.attachment_url} />
+      {/* Main Scrut Text */}
+      {scrut.text && (
+        <div className="relative z-10 my-2.5">
+          <TextReveal
+            text={scrut.text}
+            onComplete={onRevealComplete}
+            className="text-white/90 leading-[1.65] font-serif"
+            style={{ fontSize: isShort ? 17 : 15 }}
+          />
         </div>
       )}
 
-      {/* Bottom row: clearly visible */}
-      <div className={cn('mt-5 flex items-center justify-between', !scrut.attachment_url && 'clear-both')}>
+      {/* Modern Attachment (GIF / Image) */}
+      {scrut.attachment_url && (
+        <div className="relative z-10 my-2">
+          <ScrutMediaAttachment
+            url={scrut.attachment_url}
+            onZoom={(u) => setLightboxUrl(u)}
+            isShort={isShort}
+          />
+        </div>
+      )}
+
+      {/* Footer action row */}
+      <div className="relative z-10 mt-4 flex items-center justify-between pt-2.5 border-t border-white/[0.07]">
         <ResonatesButton
           scrutId={scrut.id}
           initialCount={scrut.resonate_count ?? 0}
           initialResonated={scrut.resonated_by_me ?? false}
           size="md"
         />
-        <button type="button" onClick={() => onAvatarClick?.(scrut)} aria-label={`View ${scrut.user.display_name} profile`} className="p-1.5 rounded-lg text-white/35 hover:text-white/75 transition-colors">
-          <UserRound size={15} />
-        </button>
-        <div className="flex items-center gap-2.5">
-          <span className="text-white/40 text-[13px] font-medium">{timeAgo(scrut.created_at)}</span>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onAvatarClick?.(scrut)}
+            aria-label={`View ${scrut.user.display_name} profile`}
+            className="p-1.5 rounded-lg text-white/35 hover:text-white/75 transition-colors flex items-center gap-1 text-xs"
+            title="View profile"
+          >
+            <UserRound size={15} />
+          </button>
+
+          <span className="text-white/40 text-xs font-medium">{timeAgo(scrut.created_at)}</span>
+
           {user && (
             <button
-              onClick={e => { e.stopPropagation(); setReportOpen(true); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setReportOpen(true);
+              }}
               className="text-white/30 hover:text-rose-400/80 p-1.5 rounded-lg transition-colors"
               aria-label="Report scrut"
+              title="Report scrut"
             >
               <Flag size={14} />
             </button>
           )}
         </div>
       </div>
+
       {reportOpen && <ReportModal scrutId={scrut.id} onClose={() => setReportOpen(false)} />}
+      {lightboxUrl && (
+        <MediaLightboxModal
+          url={lightboxUrl}
+          onClose={() => setLightboxUrl(null)}
+        />
+      )}
     </div>
   );
 }

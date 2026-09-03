@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Globe, ExternalLink, X, UserPlus, UserCheck, Sparkles, MessageSquare } from 'lucide-react';
+import { Globe, ExternalLink, X, UserPlus, UserCheck, Sparkles, MessageSquare, Coffee, Layers, ChevronRight } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
 import type { Scrut, User } from '@/types';
 import { useTagged } from '@/stores/taggedContext';
+import UserContributionsSheet from '@/components/features/UserContributionsSheet';
 
 interface Props {
   scrut?: Scrut | null;
@@ -36,11 +37,27 @@ function ensureHttps(url: string) {
   return url.startsWith('http') ? url : `https://${url}`;
 }
 
+function getTipLabel(url?: string | null): string {
+  if (!url) return 'Buy a coffee';
+  const l = url.toLowerCase();
+  if (l.includes('buymeacoffee.com') || l.includes('bmc.link')) return 'Buy me a coffee';
+  if (l.includes('ko-fi.com')) return 'Ko-fi';
+  if (l.includes('paypal.me') || l.includes('paypal.com')) return 'PayPal';
+  return 'Buy me a coffee';
+}
+
 export default function ScrutDetailSheet({ scrut, user: propUser, onClose }: Props) {
   const user = propUser || scrut?.user;
   const { isTagged, toggleTag } = useTagged();
   const tagged = user ? isTagged(user.id) : false;
   const mapUrl = user?.country ? getMapUrl(user.country) : null;
+
+  // Resolve tip link from user object or localStorage
+  const tipLink = user?.tip_link || (typeof window !== 'undefined' && user?.id
+    ? (localStorage.getItem(`scruttin_tip_${user.id}`) || localStorage.getItem(`scruttin_tip_link_${user.id}`)) || undefined
+    : undefined);
+
+  const [showContributions, setShowContributions] = useState(false);
 
   // Sheet drag-to-dismiss
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -213,32 +230,49 @@ export default function ScrutDetailSheet({ scrut, user: propUser, onClose }: Pro
                 </div>
               </div>
 
-              {/* Tag along button */}
-              {user.id !== 'platform' && (
-                <button
-                  type="button"
-                  id="profile-tag-along-btn"
-                  onClick={() => toggleTag(user)}
-                  className={cn(
-                    'shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 shadow-sm active:scale-95',
-                    tagged
-                      ? 'bg-white/10 text-white border border-white/20 hover:bg-rose-500/15 hover:border-rose-500/30 hover:text-rose-300'
-                      : 'bg-white text-black hover:bg-white/90 hover:shadow-[0_0_12px_rgba(255,255,255,0.3)]'
-                  )}
-                >
-                  {tagged ? (
-                    <>
-                      <UserCheck size={13} className="text-emerald-400" />
-                      <span>Tagged</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus size={13} />
-                      <span>Tag Along</span>
-                    </>
-                  )}
-                </button>
-              )}
+              {/* Actions: Coffee Tipping & Tag along button */}
+              <div className="flex items-center gap-2 shrink-0">
+                {tipLink && (
+                  <a
+                    href={ensureHttps(tipLink)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    id="profile-tip-coffee-btn"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 hover:border-amber-400 transition-all shadow-sm active:scale-95 touch-manipulation group"
+                    title={`Buy ${user.display_name} a coffee / Tip`}
+                  >
+                    <Coffee size={13} className="text-amber-400 group-hover:scale-110 transition-transform" />
+                    <span>{getTipLabel(tipLink)}</span>
+                  </a>
+                )}
+
+                {user.id !== 'platform' && (
+                  <button
+                    type="button"
+                    id="profile-tag-along-btn"
+                    onClick={() => toggleTag(user)}
+                    className={cn(
+                      'shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 shadow-sm active:scale-95',
+                      tagged
+                        ? 'bg-white/10 text-white border border-white/20 hover:bg-rose-500/15 hover:border-rose-500/30 hover:text-rose-300'
+                        : 'bg-white text-black hover:bg-white/90 hover:shadow-[0_0_12px_rgba(255,255,255,0.3)]'
+                    )}
+                  >
+                    {tagged ? (
+                      <>
+                        <UserCheck size={13} className="text-emerald-400" />
+                        <span>Tagged</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={13} />
+                        <span>Tag Along</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Thin rule */}
@@ -246,14 +280,37 @@ export default function ScrutDetailSheet({ scrut, user: propUser, onClose }: Pro
 
             {/* Bio */}
             {user.bio ? (
-              <p className="text-white/75 text-[14px] leading-relaxed mb-5 font-sans">
+              <p className="text-white/75 text-[14px] leading-relaxed mb-4 font-sans">
                 {user.bio}
               </p>
             ) : (
-              <p className="text-white/35 text-xs italic mb-5">
+              <p className="text-white/35 text-xs italic mb-4">
                 Observing conversations and sharing perspectives on Scruttin.
               </p>
             )}
+
+            {/* Button linking to Questions, Claims & Responses slide-up sheet */}
+            <button
+              type="button"
+              id="profile-view-contributions-btn"
+              onClick={() => setShowContributions(true)}
+              className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 transition-all group active:scale-[0.99] touch-manipulation text-left mb-4"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0">
+                  <Layers size={15} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-white group-hover:text-purple-300 transition-colors">
+                    Questions, Claims & Responses
+                  </p>
+                  <p className="text-[11px] text-white/40 truncate">
+                    Questions asked · Claims made · Questions responded to
+                  </p>
+                </div>
+              </div>
+              <ChevronRight size={15} className="text-white/40 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
 
             {/* Feed connection note */}
             <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/5 text-[11px] text-white/50 mb-5">
@@ -265,16 +322,45 @@ export default function ScrutDetailSheet({ scrut, user: propUser, onClose }: Pro
               </span>
             </div>
 
-            {/* Scrut timestamp if triggered from specific scrut */}
+            {/* Scrut attachment & timestamp if triggered from specific scrut */}
+            {scrut?.attachment_url && (
+              <div className="mb-3 relative rounded-2xl overflow-hidden border border-white/15 bg-black/40 shadow-lg">
+                <img
+                  src={scrut.attachment_url}
+                  alt="Scrut attachment"
+                  className="w-full max-h-48 object-cover sm:object-contain bg-black/50"
+                />
+                {(scrut.attachment_url.toLowerCase().includes('.gif') || scrut.attachment_url.toLowerCase().includes('giphy')) && (
+                  <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-white font-bold text-[9px] tracking-wider uppercase">
+                    GIF
+                  </span>
+                )}
+              </div>
+            )}
+
             {scrut && (
               <p className="text-white/25 text-[11px] tracking-wide mb-5 uppercase font-medium">
                 Scrut from {timeAgo(scrut.created_at)}
               </p>
             )}
 
-            {/* Links */}
-            {(user.website || user.twitter || user.instagram) && (
+            {/* Links & Tip link */}
+            {(user.website || user.twitter || user.instagram || tipLink) && (
               <div className="flex flex-wrap gap-2">
+                {tipLink && (
+                  <a
+                    href={ensureHttps(tipLink)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-500/35 bg-amber-500/10
+                               text-amber-300 hover:text-amber-200 hover:border-amber-400 hover:bg-amber-500/20
+                               text-xs font-medium transition-all"
+                  >
+                    <Coffee size={12} className="text-amber-400" />
+                    <span>{getTipLabel(tipLink)}</span>
+                  </a>
+                )}
                 {user.website && (
                   <a
                     href={ensureHttps(user.website)}
@@ -328,6 +414,14 @@ export default function ScrutDetailSheet({ scrut, user: propUser, onClose }: Pro
           </div>
         </div>
       </div>
+
+      {/* User contributions slide up sheet */}
+      {showContributions && (
+        <UserContributionsSheet
+          user={user}
+          onClose={() => setShowContributions(false)}
+        />
+      )}
     </div>
   );
 }

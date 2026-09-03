@@ -10,11 +10,10 @@
  */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Pin, Music2, Shield } from 'lucide-react';
+import { LogOut, Pin, Shield } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePreferences } from '@/stores/preferencesStore';
 import { useStream } from '@/stores/streamContext';
 import AtmosphereControls from '@/components/layout/AtmosphereControls';
 
@@ -30,7 +29,6 @@ interface PinnedConversation {
 export default function MeTopBar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { musicEnabled, setMusicEnabled } = usePreferences();
   const { pinned } = useStream();
   const [pinsOpen, setPinsOpen] = useState(false);
   const [pinnedConvs, setPinnedConvs] = useState<PinnedConversation[]>([]);
@@ -57,26 +55,8 @@ export default function MeTopBar() {
           </button>
         )}
 
-        {/* Atmosphere */}
+        {/* Atmosphere & Music controls */}
         <AtmosphereControls />
-
-        {/* Music toggle */}
-        <button
-          onClick={() => setMusicEnabled(!musicEnabled)}
-          className={cn(
-            'relative p-2 rounded-lg transition-all',
-            musicEnabled ? 'text-white/70' : 'text-white/25 hover:text-white/50'
-          )}
-          title={musicEnabled ? 'Music on' : 'Music off'}
-        >
-          <Music2 size={16} />
-          {musicEnabled && (
-            <>
-              <span className="absolute inset-0 rounded-lg border border-white/20 animate-ping" style={{ animationDuration: '2s' }} />
-              <span className="absolute inset-[-3px] rounded-xl border border-white/10 animate-ping" style={{ animationDuration: '2.6s' }} />
-            </>
-          )}
-        </button>
 
         {/* Pins */}
         <button

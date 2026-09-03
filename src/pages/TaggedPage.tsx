@@ -15,6 +15,9 @@ import {
   Upload,
   Bookmark,
   BarChart2,
+  CheckCircle2,
+  Clock,
+  Lock,
 } from 'lucide-react';
 import { useTagged } from '@/stores/taggedContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,10 +29,14 @@ import {
 import type { User } from '@/types';
 import UserAvatar from '@/components/features/UserAvatar';
 import TaggedPostCard from '@/components/features/TaggedPostCard';
+import TaggedFeedSkeleton from '@/components/features/TaggedPostSkeleton';
 import TaggedPostDetailModal from '@/components/features/TaggedPostDetailModal';
 import TaggedPollBuilder, { PollDraft } from '@/components/features/TaggedPollBuilder';
 import ScrutDetailSheet from '@/components/features/ScrutDetailSheet';
 import TaggedUsersSheet from '@/components/features/TaggedUsersSheet';
+import TaggedPostingEligibilityCard from '@/components/features/TaggedPostingEligibilityCard';
+import TaggedGracePeriodBanner from '@/components/features/TaggedGracePeriodBanner';
+import TaggedRulesModal from '@/components/features/TaggedRulesModal';
 import ShareModal from '@/components/features/ShareModal';
 import ReportModal from '@/components/features/ReportModal';
 import AtmosphereControls from '@/components/layout/AtmosphereControls';
@@ -57,9 +64,19 @@ export default function TaggedPage() {
     stickerPack,
     curatedGifs,
     photoPresets,
+    isLoading: isFeedLoading,
+    refreshFeed,
+    taggersCount,
+    taggersThreshold,
+    taggerStatus,
+    canPostInTagged,
+    gracePeriodDaysRemaining,
+    gracePeriodHoursRemaining,
   } = useTagged();
 
   const [activeTab, setActiveTab] = useState<FeedTab>('tagged_along');
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [isTabTransitioning, setIsTabTransitioning] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -173,12 +190,20 @@ export default function TaggedPage() {
     });
   }, [posts, activeTab, taggedIds, currentUser?.id, bookmarkedIds, searchQuery]);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
+  const handleTabSelect = (tab: FeedTab) => {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
+    setIsTabTransitioning(true);
     setTimeout(() => {
-      setRefreshing(false);
-      toast.success('Feed updated');
-    }, 450);
+      setIsTabTransitioning(false);
+    }, 280);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshFeed();
+    setRefreshing(false);
+    toast.success('Feed updated');
   };
 
   // Handle local image file upload
@@ -289,7 +314,7 @@ export default function TaggedPage() {
   }, [curatedGifs, gifCategory]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0a10] pb-32 sm:pb-28 text-white font-sans selection:bg-white/20 selection:text-white">
+    <div className="flex flex-col min-h-screen pb-32 sm:pb-28 text-white selection:bg-white/20 selection:text-white">
       {/* Hidden file input */}
       <input
         type="file"
@@ -300,7 +325,7 @@ export default function TaggedPage() {
       />
 
       {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#0c0c14]/95 backdrop-blur-xl px-3 sm:px-4 pt-safe pt-2.5 pb-2">
+      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-black/40 backdrop-blur-xl px-3 sm:px-4 pt-safe pt-2.5 pb-2">
         <div className="max-w-xl mx-auto flex items-center justify-between gap-2">
           {/* Header Title & Branding */}
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
@@ -324,6 +349,28 @@ export default function TaggedPage() {
 
           {/* Header Right Actions */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* My Taggers Posting Status Button */}
+            <button
+              type="button"
+              id="header-my-taggers-btn"
+              onClick={() => setShowRulesModal(true)}
+              className={cn(
+                'flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border text-xs font-semibold transition-all group active:scale-95 shadow-sm',
+                taggerStatus === 'unlocked' && 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300 hover:bg-emerald-500/20',
+                taggerStatus === 'grace_period' && 'bg-amber-500/15 border-amber-500/35 text-amber-300 hover:bg-amber-500/25 animate-pulse',
+                (taggerStatus === 'restricted' || taggerStatus === 'locked') && 'bg-rose-500/15 border-rose-500/35 text-rose-300 hover:bg-rose-500/25'
+              )}
+              title="View Tagger rules & posting eligibility status"
+            >
+              {taggerStatus === 'unlocked' && <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />}
+              {taggerStatus === 'grace_period' && <Clock size={12} className="text-amber-400 shrink-0" />}
+              {(taggerStatus === 'restricted' || taggerStatus === 'locked') && <Lock size={12} className="text-rose-400 shrink-0" />}
+              <span className="font-mono">{taggersCount}</span>
+              <span className="text-[10px] text-white/60 hidden xs:inline">
+                {taggerStatus === 'unlocked' ? 'Taggers' : `/${taggersThreshold}`}
+              </span>
+            </button>
+
             {/* Tagged People Count & Small Profile Pics Badge */}
             <button
               type="button"
@@ -377,7 +424,7 @@ export default function TaggedPage() {
             <button
               type="button"
               id="tab-tagged-along"
-              onClick={() => setActiveTab('tagged_along')}
+              onClick={() => handleTabSelect('tagged_along')}
               className={cn(
                 'relative px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap',
                 activeTab === 'tagged_along'
@@ -396,7 +443,7 @@ export default function TaggedPage() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('visuals')}
+              onClick={() => handleTabSelect('visuals')}
               className={cn(
                 'relative px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap',
                 activeTab === 'visuals'
@@ -414,7 +461,7 @@ export default function TaggedPage() {
             <button
               type="button"
               id="tab-polls"
-              onClick={() => setActiveTab('polls')}
+              onClick={() => handleTabSelect('polls')}
               className={cn(
                 'relative px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap',
                 activeTab === 'polls'
@@ -431,7 +478,7 @@ export default function TaggedPage() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('bookmarks')}
+              onClick={() => handleTabSelect('bookmarks')}
               className={cn(
                 'relative px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ml-auto shrink-0 whitespace-nowrap',
                 activeTab === 'bookmarks'
@@ -474,235 +521,249 @@ export default function TaggedPage() {
           </div>
         </div>
 
-        {/* Microblog World Composer */}
-        <section className="mb-3.5 sm:mb-4 rounded-2xl bg-white/[0.04] border border-white/10 p-3 sm:p-3.5 shadow-md">
-          <div className="flex items-start gap-2.5 sm:gap-3">
-            <div className="shrink-0 pt-0.5">
-              <UserAvatar
-                user={
-                  currentUser
-                    ? {
-                        id: currentUser.id,
-                        display_name: currentUser.display_name || 'You',
-                        avatar_url: currentUser.avatar_url || '',
-                        country: currentUser.country || '',
-                      }
-                    : { id: 'me', display_name: 'You' }
-                }
-                size="md"
-                shape="circle"
-              />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <textarea
-                value={composerText}
-                onChange={(e) => setComposerText(e.target.value)}
-                placeholder="Share a glimpse into your world... (photos, GIFs, stickers, thoughts)"
-                rows={2}
-                maxLength={280}
-                className="w-full bg-transparent border-0 text-[14px] text-white placeholder-white/35 focus:outline-none resize-none leading-relaxed"
-              />
-
-              {/* Selected Sticker Badge */}
-              {selectedSticker && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border mb-2.5 mr-2 animate-fade-in shadow-sm"
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    borderColor: 'rgba(255,255,255,0.2)',
-                  }}
-                >
-                  <span className="text-sm">{selectedSticker.emoji}</span>
-                  <span className={selectedSticker.color}>{selectedSticker.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSticker(null)}
-                    className="p-0.5 rounded-full hover:bg-white/20 text-white/60 hover:text-white"
-                  >
-                    <X size={11} />
-                  </button>
-                </div>
-              )}
-
-              {/* Attached Image Preview */}
-              {selectedImage && (
-                <div className="relative rounded-xl overflow-hidden border border-white/15 mb-2.5 max-h-48 group">
-                  <img src={selectedImage} alt="Attached snapshot" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setSelectedImage(null)}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-black transition-all"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              )}
-
-              {/* Attached GIF Preview */}
-              {selectedGif && (
-                <div className="relative rounded-xl overflow-hidden border border-white/15 mb-2.5 max-h-44 group">
-                  <img src={selectedGif} alt="Attached GIF" className="w-full h-full object-cover" />
-                  <span className="absolute bottom-2 left-2 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/60 text-white/80">
-                    GIF
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGif(null)}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-black transition-all"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              )}
-
-              {/* Location & Mood input bar */}
-              {showLocationInput && (
-                <div className="flex items-center gap-2 mb-2 pt-1 border-t border-white/5 animate-fade-in">
-                  <div className="flex-1 flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/8 text-xs">
-                    <MapPin size={12} className="text-emerald-400 shrink-0" />
-                    <input
-                      type="text"
-                      placeholder="Add location (e.g. Kyoto, Japan)"
-                      value={customLocation}
-                      onChange={(e) => setCustomLocation(e.target.value)}
-                      className="bg-transparent text-white placeholder-white/30 focus:outline-none w-full text-[11px]"
-                    />
-                  </div>
-                  <div className="w-1/3 flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/8 text-xs">
-                    <input
-                      type="text"
-                      placeholder="#MoodTag"
-                      value={customMood}
-                      onChange={(e) => setCustomMood(e.target.value)}
-                      className="bg-transparent text-white placeholder-white/30 focus:outline-none w-full text-[11px]"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Poll Builder Inline Form */}
-              {showPollBuilder && (
-                <TaggedPollBuilder
-                  draft={pollDraft}
-                  onChange={setPollDraft}
-                  onRemove={() => {
-                    setShowPollBuilder(false);
-                    setPollDraft({
-                      question: '',
-                      options: ['', ''],
-                      durationDays: 1,
-                    });
-                  }}
-                />
-              )}
-
-              {/* Composer Toolbar */}
-              <div className="flex items-center justify-between border-t border-white/8 pt-2.5 mt-1 gap-1">
-                <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-x-auto no-scrollbar">
-                  {/* Photo attachment button */}
-                  <button
-                    type="button"
-                    onClick={() => setShowPhotoPicker(true)}
-                    className={cn(
-                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
-                      selectedImage ? 'bg-emerald-500/20 text-emerald-300' : 'text-white/60 hover:text-white hover:bg-white/10'
-                    )}
-                    title="Attach Photo or Presets"
-                  >
-                    <ImageIcon size={15} />
-                    <span className="text-[11px] hidden sm:inline">Photo</span>
-                  </button>
-
-                  {/* GIF attachment button */}
-                  <button
-                    type="button"
-                    onClick={() => setShowGifPicker(true)}
-                    className={cn(
-                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
-                      selectedGif ? 'bg-emerald-500/20 text-emerald-300' : 'text-white/60 hover:text-white hover:bg-white/10'
-                    )}
-                    title="Pick GIF"
-                  >
-                    <span className="text-[10px] font-mono font-bold px-1 py-0.5 rounded bg-white/10 border border-white/15">
-                      GIF
-                    </span>
-                    <span className="text-[11px] hidden sm:inline">GIF</span>
-                  </button>
-
-                  {/* Sticker button */}
-                  <button
-                    type="button"
-                    onClick={() => setShowStickerPicker(true)}
-                    className={cn(
-                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
-                      selectedSticker ? 'bg-indigo-500/20 text-indigo-300' : 'text-white/60 hover:text-white hover:bg-white/10'
-                    )}
-                    title="Attach Mood Sticker"
-                  >
-                    <StickerIcon size={15} />
-                    <span className="text-[11px] hidden sm:inline">Sticker</span>
-                  </button>
-
-                  {/* Poll creation toggle button */}
-                  <button
-                    type="button"
-                    id="compose-poll-btn"
-                    onClick={() => setShowPollBuilder((prev) => !prev)}
-                    className={cn(
-                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
-                      showPollBuilder
-                        ? 'bg-emerald-500/20 text-emerald-300'
-                        : 'text-white/60 hover:text-white hover:bg-white/10'
-                    )}
-                    title="Create a Poll"
-                  >
-                    <BarChart2 size={15} />
-                    <span className="text-[11px] hidden sm:inline">Poll</span>
-                  </button>
-
-                  {/* Location toggle button */}
-                  <button
-                    type="button"
-                    onClick={() => setShowLocationInput((prev) => !prev)}
-                    className={cn(
-                      'p-1.5 sm:p-2 rounded-xl text-xs transition-all shrink-0',
-                      customLocation || showLocationInput ? 'text-emerald-400 bg-emerald-500/10' : 'text-white/60 hover:text-white hover:bg-white/10'
-                    )}
-                    title="Add Location tag"
-                  >
-                    <MapPin size={15} />
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                  <span className={cn('text-[10px] font-mono', composerText.length > 250 ? 'text-amber-400' : 'text-white/30')}>
-                    {280 - composerText.length}
-                  </span>
-                  <button
-                    type="button"
-                    id="publish-tagged-post"
-                    onClick={handlePublish}
-                    disabled={
-                      !composerText.trim() &&
-                      !selectedImage &&
-                      !selectedGif &&
-                      !selectedSticker &&
-                      (!showPollBuilder || pollDraft.options.filter((o) => o.trim()).length < 2)
+        {/* Microblog World Composer or Eligibility Restriction Card */}
+        {!canPostInTagged ? (
+          <TaggedPostingEligibilityCard onOpenRules={() => setShowRulesModal(true)} />
+        ) : (
+          <>
+            {taggerStatus === 'grace_period' && (
+              <TaggedGracePeriodBanner onOpenRules={() => setShowRulesModal(true)} />
+            )}
+            <section className="mb-3.5 sm:mb-4 rounded-2xl bg-black/35 backdrop-blur-md border border-white/10 p-3 sm:p-3.5 shadow-md">
+              <div className="flex items-start gap-2.5 sm:gap-3">
+                <div className="shrink-0 pt-0.5">
+                  <UserAvatar
+                    user={
+                      currentUser
+                        ? {
+                            id: currentUser.id,
+                            display_name: currentUser.display_name || 'You',
+                            avatar_url: currentUser.avatar_url || '',
+                            country: currentUser.country || '',
+                          }
+                        : { id: 'me', display_name: 'You' }
                     }
-                    className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full bg-emerald-400 text-black text-xs font-semibold hover:bg-emerald-300 disabled:opacity-40 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
-                  >
-                    <span>Scrut</span>
-                    <Send size={11} />
-                  </button>
+                    size="md"
+                    shape="circle"
+                  />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <textarea
+                    value={composerText}
+                    onChange={(e) => setComposerText(e.target.value)}
+                    placeholder="Share a glimpse into your world... (photos, GIFs, stickers, thoughts)"
+                    rows={2}
+                    maxLength={280}
+                    className="w-full bg-transparent border-0 text-[14px] text-white placeholder-white/35 focus:outline-none resize-none leading-relaxed"
+                  />
+
+                  {/* Selected Sticker Badge */}
+                  {selectedSticker && (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border mb-2.5 mr-2 animate-fade-in shadow-sm"
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        borderColor: 'rgba(255,255,255,0.2)',
+                      }}
+                    >
+                      <span className="text-sm">{selectedSticker.emoji}</span>
+                      <span className={selectedSticker.color}>{selectedSticker.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSticker(null)}
+                        className="p-0.5 rounded-full hover:bg-white/20 text-white/60 hover:text-white"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Attached Image Preview */}
+                  {selectedImage && (
+                    <div className="relative rounded-xl overflow-hidden border border-white/15 mb-2.5 max-h-48 group">
+                      <img src={selectedImage} alt="Attached snapshot" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setSelectedImage(null)}
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-black transition-all"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Attached GIF Preview */}
+                  {selectedGif && (
+                    <div className="relative rounded-xl overflow-hidden border border-white/15 mb-2.5 max-h-44 group">
+                      <img src={selectedGif} alt="Attached GIF" className="w-full h-full object-cover" />
+                      <span className="absolute bottom-2 left-2 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/60 text-white/80">
+                        GIF
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedGif(null)}
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-black transition-all"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Location & Mood input bar */}
+                  {showLocationInput && (
+                    <div className="flex items-center gap-2 mb-2 pt-1 border-t border-white/5 animate-fade-in">
+                      <div className="flex-1 flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/8 text-xs">
+                        <MapPin size={12} className="text-emerald-400 shrink-0" />
+                        <input
+                          type="text"
+                          placeholder="Add location (e.g. Kyoto, Japan)"
+                          value={customLocation}
+                          onChange={(e) => setCustomLocation(e.target.value)}
+                          className="bg-transparent text-white placeholder-white/30 focus:outline-none w-full text-[11px]"
+                        />
+                      </div>
+                      <div className="w-1/3 flex items-center gap-1 bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/8 text-xs">
+                        <input
+                          type="text"
+                          placeholder="#MoodTag"
+                          value={customMood}
+                          onChange={(e) => setCustomMood(e.target.value)}
+                          className="bg-transparent text-white placeholder-white/30 focus:outline-none w-full text-[11px]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Poll Builder Inline Form */}
+                  {showPollBuilder && (
+                    <TaggedPollBuilder
+                      draft={pollDraft}
+                      onChange={setPollDraft}
+                      onRemove={() => {
+                        setShowPollBuilder(false);
+                        setPollDraft({
+                          question: '',
+                          options: ['', ''],
+                          durationDays: 1,
+                        });
+                      }}
+                    />
+                  )}
+
+                  {/* Composer Toolbar */}
+                  <div className="flex items-center justify-between border-t border-white/8 pt-2.5 mt-1 gap-1">
+                    <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-x-auto no-scrollbar">
+                      {/* Photo attachment button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowPhotoPicker(true)}
+                        className={cn(
+                          'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
+                          selectedImage ? 'bg-emerald-500/20 text-emerald-300' : 'text-white/60 hover:text-white hover:bg-white/10'
+                        )}
+                        title="Attach Photo or Presets"
+                      >
+                        <ImageIcon size={15} />
+                        <span className="text-[11px] hidden sm:inline">Photo</span>
+                      </button>
+
+                      {/* GIF attachment button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowGifPicker(true)}
+                        className={cn(
+                          'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
+                          selectedGif ? 'bg-emerald-500/20 text-emerald-300' : 'text-white/60 hover:text-white hover:bg-white/10'
+                        )}
+                        title="Pick GIF"
+                      >
+                        <span className="text-[10px] font-mono font-bold px-1 py-0.5 rounded bg-white/10 border border-white/15">
+                          GIF
+                        </span>
+                        <span className="text-[11px] hidden sm:inline">GIF</span>
+                      </button>
+
+                      {/* Sticker button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowStickerPicker(true)}
+                        className={cn(
+                          'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
+                          selectedSticker ? 'bg-indigo-500/20 text-indigo-300' : 'text-white/60 hover:text-white hover:bg-white/10'
+                        )}
+                        title="Attach Mood Sticker"
+                      >
+                        <StickerIcon size={15} />
+                        <span className="text-[11px] hidden sm:inline">Sticker</span>
+                      </button>
+
+                      {/* Poll creation toggle button */}
+                      <button
+                        type="button"
+                        id="compose-poll-btn"
+                        onClick={() => setShowPollBuilder((prev) => !prev)}
+                        className={cn(
+                          'p-1.5 sm:p-2 rounded-xl text-xs transition-all flex items-center gap-1 shrink-0',
+                          showPollBuilder
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : 'text-white/60 hover:text-white hover:bg-white/10'
+                        )}
+                        title="Create a Poll"
+                      >
+                        <BarChart2 size={15} />
+                        <span className="text-[11px] hidden sm:inline">Poll</span>
+                      </button>
+
+                      {/* Location toggle button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowLocationInput((prev) => !prev)}
+                        className={cn(
+                          'p-1.5 sm:p-2 rounded-xl text-xs transition-all shrink-0',
+                          customLocation || showLocationInput ? 'text-emerald-400 bg-emerald-500/10' : 'text-white/60 hover:text-white hover:bg-white/10'
+                        )}
+                        title="Add Location tag"
+                      >
+                        <MapPin size={15} />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                      <span className={cn('text-[10px] font-mono', composerText.length > 250 ? 'text-amber-400' : 'text-white/30')}>
+                        {280 - composerText.length}
+                      </span>
+                      <button
+                        type="button"
+                        id="publish-tagged-post"
+                        onClick={handlePublish}
+                        disabled={
+                          !composerText.trim() &&
+                          !selectedImage &&
+                          !selectedGif &&
+                          !selectedSticker &&
+                          (!showPollBuilder || pollDraft.options.filter((o) => o.trim()).length < 2)
+                        }
+                        className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full bg-emerald-400 text-black text-xs font-semibold hover:bg-emerald-300 disabled:opacity-40 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+                      >
+                        <span>Scrut</span>
+                        <Send size={11} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
+          </>
+        )}
 
-        {/* Feed Posts List (Social Timeline with TaggedPostCard) */}
-        {filteredPosts.length > 0 ? (
-          <div className="divide-y divide-white/[0.06] rounded-2xl bg-[#0f0f18]/60 border border-white/[0.07] overflow-hidden">
+        {/* Feed Posts List (Social Timeline with TaggedPostCard or Shimmer Skeleton) */}
+        {isFeedLoading || isTabTransitioning ? (
+          <TaggedFeedSkeleton
+            count={activeTab === 'polls' ? 3 : activeTab === 'visuals' ? 3 : 4}
+            variant={activeTab === 'polls' ? 'poll' : activeTab === 'visuals' ? 'image' : 'mixed'}
+          />
+        ) : filteredPosts.length > 0 ? (
+          <div className="divide-y divide-white/[0.06] rounded-2xl bg-black/35 backdrop-blur-md border border-white/10 overflow-hidden">
             {filteredPosts.map((post) => {
               const userIsTagged = isTagged(post.user.id);
               const isLiked = likedIds.includes(post.id);
@@ -1039,6 +1100,12 @@ export default function TaggedPage() {
           onClose={() => setSharingPost(null)}
         />
       )}
+
+      {/* Tagged Posting Eligibility & Rules Modal */}
+      <TaggedRulesModal
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+      />
     </div>
   );
 }

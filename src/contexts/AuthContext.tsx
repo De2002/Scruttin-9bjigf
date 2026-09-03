@@ -13,6 +13,7 @@ export interface AuthUser {
   website?: string;
   twitter?: string;
   instagram?: string;
+  tip_link?: string;
   is_admin: boolean;
   onboarded: boolean;
   date_of_birth?: string;
@@ -24,11 +25,13 @@ interface AuthContextValue {
   login: (u: AuthUser) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  updateTipLink?: (link: string) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function mapUser(supabaseUser: SupabaseUser, profile?: Record<string, unknown>): AuthUser {
+  const localTip = typeof window !== 'undefined' ? localStorage.getItem(`scruttin_tip_${supabaseUser.id}`) || undefined : undefined;
   return {
     id: supabaseUser.id,
     email: supabaseUser.email!,
@@ -43,6 +46,7 @@ function mapUser(supabaseUser: SupabaseUser, profile?: Record<string, unknown>):
     website: profile?.website as string | undefined,
     twitter: profile?.twitter as string | undefined,
     instagram: profile?.instagram as string | undefined,
+    tip_link: (profile?.tip_link as string) || localTip,
     is_admin: (profile?.is_admin as boolean) || false,
     onboarded: (profile?.onboarded as boolean) || false,
     date_of_birth: profile?.date_of_birth as string | undefined,
@@ -72,6 +76,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback((u: AuthUser) => setUser(u), []);
   const logout = useCallback(() => setUser(null), []);
+
+  const updateTipLink = useCallback((link: string) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      try {
+        localStorage.setItem(`scruttin_tip_${prev.id}`, link);
+      } catch {
+        /* storage unavailable */
+      }
+      return { ...prev, tip_link: link || undefined };
+    });
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -115,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, updateTipLink }}>
       {children}
     </AuthContext.Provider>
   );
