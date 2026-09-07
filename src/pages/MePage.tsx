@@ -50,7 +50,7 @@ interface MyScrut {
 const INPUT_CLS = 'w-full bg-[rgba(255,255,255,0.07)] border border-[rgba(255,255,255,0.12)] rounded-xl px-3 py-2.5 text-white text-sm placeholder-[rgba(255,255,255,0.25)] focus:outline-none focus:border-[rgba(255,255,255,0.28)] transition-colors';
 
 export default function MePage() {
-  const { user, loading, refreshUser } = useAuth();
+  const { user, loading, refreshUser, updateProfile } = useAuth();
   const navigate = useNavigate();
 
   const location = useLocation();
@@ -137,49 +137,48 @@ export default function MePage() {
       /* storage unavailable */
     }
 
-    // First attempt to update with tip_link
-    let { error } = await supabase.from('user_profiles').update({
-      display_name: editName.trim(),
-      bio: editBio.trim() || null,
-      city: editCity.trim() || null,
-      website: editWebsite.trim() || null,
-      twitter: editTwitter.trim().replace('@', '') || null,
-      instagram: editInstagram.trim().replace('@', '') || null,
-      tip_link: cleanTip || null,
-    }).eq('id', user.id);
-
-    // If column tip_link does not exist in schema yet, fallback cleanly without failing
-    if (error && error.message?.toLowerCase().includes('column') && error.message?.toLowerCase().includes('tip_link')) {
-      const retry = await supabase.from('user_profiles').update({
+    try {
+      await updateProfile({
         display_name: editName.trim(),
-        bio: editBio.trim() || null,
-        city: editCity.trim() || null,
-        website: editWebsite.trim() || null,
-        twitter: editTwitter.trim().replace('@', '') || null,
-        instagram: editInstagram.trim().replace('@', '') || null,
-      }).eq('id', user.id);
-      error = retry.error;
+        bio: editBio.trim() || undefined,
+        city: editCity.trim() || undefined,
+        website: editWebsite.trim() || undefined,
+        twitter: editTwitter.trim().replace('@', '') || undefined,
+        instagram: editInstagram.trim().replace('@', '') || undefined,
+        tip_link: cleanTip || undefined,
+      });
+      await refreshUser();
+      setEditing(false);
+      toast.success('Profile updated');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
     }
-
-    setSavingProfile(false);
-    if (error) { toast.error(error.message); return; }
-    await refreshUser();
-    setEditing(false);
-    toast.success('Profile updated');
   };
 
   const uploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setAvatarUploading(true);
-    const path = `${user.id}/avatar-${Date.now()}.${file.name.split('.').pop()}`;
-    const { data, error } = await supabase.storage.from('profile-pics').upload(path, file, { upsert: true });
-    if (error) { toast.error(error.message); setAvatarUploading(false); return; }
-    const { data: { publicUrl } } = supabase.storage.from('profile-pics').getPublicUrl(data.path);
-    await supabase.from('user_profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
-    await refreshUser();
-    setAvatarUploading(false);
-    toast.success('Photo updated');
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        await updateProfile({ avatar_url: base64 });
+        await refreshUser();
+        setAvatarUploading(false);
+        toast.success('Photo updated');
+      };
+      reader.onerror = () => {
+        toast.error('Failed to read image');
+        setAvatarUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      setAvatarUploading(false);
+    }
   };
 
   if (loading || !user) {

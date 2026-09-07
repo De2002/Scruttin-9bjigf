@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Mic2, Type, ArrowRight, Loader2, RotateCcw, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { createFirestoreScrut, createFirestoreConversation } from '@/lib/firestoreService';
 import { useAuth } from '@/contexts/AuthContext';
 import RecordingModal from './RecordingModal';
 import GifPickerModal from './GifPickerModal';
@@ -105,25 +106,82 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
       attachment_url: attachmentUrl ?? null,
     };
 
-    if (isResponse && contextConversation) {
-      const { error } = await supabase.from('scruts').insert({
-        ...base,
-        conversation_id: contextConversation.id,
-        position: contextConversation.type === 'statement' ? position : null,
-      });
-      if (error) { toast.error(error.message); setSubmitting(false); return; }
-    } else if (mode === 'open') {
-      const { error } = await supabase.from('scruts').insert(base);
-      if (error) { toast.error(error.message); setSubmitting(false); return; }
-    } else {
-      const { error } = await supabase.from('conversations').insert({
-        user_id: user.id,
-        type: mode,
-        body: body.trim(),
-        topic,
-        is_platform: false,
-      });
-      if (error) { toast.error(error.message); setSubmitting(false); return; }
+    try {
+      const userObj = {
+        id: user.id,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url || '',
+        country: user.country || 'Global',
+        city: user.city,
+        bio: user.bio,
+      };
+
+      if (isResponse && contextConversation) {
+        await createFirestoreScrut({
+          userId: user.id,
+          user: userObj,
+          conversationId: contextConversation.id,
+          type: format,
+          text: format === 'text' ? body.trim() : undefined,
+          audioUrl: format === 'voice' ? audioUrl || undefined : undefined,
+          audioDuration: format === 'voice' ? audioDuration || undefined : undefined,
+          position: contextConversation.type === 'statement' ? position : null,
+        });
+        supabase.from('scruts').insert({
+          ...base,
+          conversation_id: contextConversation.id,
+          position: contextConversation.type === 'statement' ? position : null,
+        }).catch(() => {});
+      } else if (mode === 'open') {
+        await createFirestoreScrut({
+          userId: user.id,
+          user: userObj,
+          type: format,
+          text: format === 'text' ? body.trim() : undefined,
+          audioUrl: format === 'voice' ? audioUrl || undefined : undefined,
+          audioDuration: format === 'voice' ? audioDuration || undefined : undefined,
+        });
+        supabase.from('scruts').insert(base).catch(() => {});
+      } else {
+        await createFirestoreConversation({
+          userId: user.id,
+          user: userObj,
+          body: body.trim(),
+          topic,
+          type: mode,
+          isPlatform: false,
+        });
+        supabase.from('conversations').insert({
+          user_id: user.id,
+          type: mode,
+          body: body.trim(),
+          topic,
+          is_platform: false,
+        }).catch(() => {});
+      }
+    } catch (err: unknown) {
+      console.warn('Firestore write warning:', err);
+      // Fallback to supabase if firestore threw
+      if (isResponse && contextConversation) {
+        const { error } = await supabase.from('scruts').insert({
+          ...base,
+          conversation_id: contextConversation.id,
+          position: contextConversation.type === 'statement' ? position : null,
+        });
+        if (error) { toast.error(error.message); setSubmitting(false); return; }
+      } else if (mode === 'open') {
+        const { error } = await supabase.from('scruts').insert(base);
+        if (error) { toast.error(error.message); setSubmitting(false); return; }
+      } else {
+        const { error } = await supabase.from('conversations').insert({
+          user_id: user.id,
+          type: mode,
+          body: body.trim(),
+          topic,
+          is_platform: false,
+        });
+        if (error) { toast.error(error.message); setSubmitting(false); return; }
+      }
     }
 
     setSubmitting(false);

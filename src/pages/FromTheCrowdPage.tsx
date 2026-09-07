@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Globe, Mic2, Loader2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { createFirestoreConversation, fetchFirestoreConversations } from '@/lib/firestoreService';
 import { cn, formatCount } from '@/lib/utils';
 import AtmosphereControls from '@/components/layout/AtmosphereControls';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,14 +58,30 @@ export default function FromTheCrowdPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('conversations')
-      .select('id, user_id, type, body, topic, is_platform, scrut_count, country_count, created_at, user:user_id(id, display_name, avatar_url, country)')
-      .eq('is_platform', false)
-      .eq('type', 'question')
-      .eq('is_reported', false)
-      .order('created_at', { ascending: false });
-    setConversations((data ?? []).map(c => mapConv(c as Record<string, unknown>)));
+    let loaded: ConversationStarter[] = [];
+    try {
+      const { data } = await supabase
+        .from('conversations')
+        .select('id, user_id, type, body, topic, is_platform, scrut_count, country_count, created_at, user:user_id(id, display_name, avatar_url, country)')
+        .eq('is_platform', false)
+        .eq('type', 'question')
+        .eq('is_reported', false)
+        .order('created_at', { ascending: false });
+      if (data && data.length > 0) {
+        loaded = data.map(c => mapConv(c as Record<string, unknown>));
+      }
+    } catch {
+      // ignore
+    }
+
+    if (loaded.length === 0) {
+      const fbConvs = await fetchFirestoreConversations('question');
+      if (fbConvs.length > 0) {
+        loaded = fbConvs.filter(c => !c.is_platform);
+      }
+    }
+
+    setConversations(loaded);
     setLoading(false);
   };
 
@@ -79,6 +96,8 @@ export default function FromTheCrowdPage() {
       } else {
         setDbTopics(['Life', 'Relationships', 'Work', 'Money', 'Technology', 'Culture', 'Family', 'Society', 'Fun']);
       }
+    }).catch(() => {
+      setDbTopics(['Life', 'Relationships', 'Work', 'Money', 'Technology', 'Culture', 'Family', 'Society', 'Fun']);
     });
   }, []);
 
@@ -87,19 +106,41 @@ export default function FromTheCrowdPage() {
   const submitQuestion = async () => {
     if (!question.trim() || !user) return;
     setSubmitting(true);
-    const { error } = await supabase.from('conversations').insert({
-      type: 'question',
-      body: question.trim(),
-      topic: selectedTopic,
-      user_id: user.id,
-      is_platform: false,
-    });
-    setSubmitting(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Question posted to From the Crowd');
-    setQuestion('');
-    setAskOpen(false);
-    load();
+    try {
+      await createFirestoreConversation({
+        userId: user.id,
+        user: {
+          id: user.id,
+          display_name: user.display_name,
+          avatar_url: user.avatar_url || '',
+          country: user.country || 'Global',
+          city: user.city,
+          bio: user.bio,
+        },
+        body: question.trim(),
+        topic: selectedTopic,
+        type: 'question',
+        isPlatform: false,
+      });
+
+      // Also mirror to supabase if accessible
+      supabase.from('conversations').insert({
+        type: 'question',
+        body: question.trim(),
+        topic: selectedTopic,
+        user_id: user.id,
+        is_platform: false,
+      }).catch(() => {});
+
+      toast.success('Question posted to From the Crowd');
+      setQuestion('');
+      setAskOpen(false);
+      await load();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to post question');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const items = conversations.filter(c => activeTopic === 'All' || c.topic === activeTopic);

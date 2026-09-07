@@ -57,6 +57,7 @@
     "crypto-js": "^4.2.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.3.0",
+    "firebase": "^12.18.0",
     "framer-motion": "^12.23.24",
     "hls.js": "^1.6.13",
     "input-otp": "^1.2.4",
@@ -90,6 +91,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@firebase/eslint-plugin-security-rules": "^0.0.2",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",
     "@types/react": "^18.3.3",
