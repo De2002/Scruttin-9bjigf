@@ -59,7 +59,13 @@ export default function AuthPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Google sign in failed';
       if (!msg.includes('popup-closed-by-user')) {
-        setError(msg);
+        if (msg.includes('auth/unauthorized-domain')) {
+          setError(
+            `Domain Unauthorized: "${window.location.hostname}" must be added to your Firebase Console under Authentication > Settings > Authorized domains.`
+          );
+        } else {
+          setError(msg);
+        }
       }
     } finally {
       setSubmitting(false);

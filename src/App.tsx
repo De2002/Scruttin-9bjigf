@@ -19,6 +19,7 @@ import TaggedPage from '@/pages/TaggedPage';
 import MePage from '@/pages/MePage';
 import ConversationPage from '@/pages/ConversationPage';
 import AdminPage from '@/pages/admin/AdminPage';
+import LegalPage from '@/pages/legal/LegalPage';
 import NotFound from '@/pages/NotFound';
 import { usePreferences } from '@/stores/preferencesStore';
 
@@ -160,6 +161,15 @@ export default function App() {
               <Route path="/me/activity" element={<AppShell><Protected><MePage /></Protected></AppShell>} />
               <Route path="/activity" element={<AppShell><Protected><MePage /></Protected></AppShell>} />
               <Route path="/admin" element={<Protected><AdminPage /></Protected>} />
+
+              {/* Full documentation & policy pages */}
+              <Route path="/about" element={<LegalPage />} />
+              <Route path="/content-guidelines" element={<LegalPage />} />
+              <Route path="/guidelines" element={<Navigate to="/content-guidelines" replace />} />
+              <Route path="/terms" element={<LegalPage />} />
+              <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
+              <Route path="/privacy" element={<LegalPage />} />
+              <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
