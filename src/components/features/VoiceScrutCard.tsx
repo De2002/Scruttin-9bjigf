@@ -155,7 +155,7 @@ export default function VoiceScrutCard({
         <button
           type="button"
           onClick={togglePlay}
-          aria-label={playing ? 'Pause voice Scrut' : 'Play voice Scrut'}
+          aria-label={playing ? 'Pause voice Rut' : 'Play voice Rut'}
           className={cn(
             'relative shrink-0 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70',
             playing ? 'border-white/50 bg-white/15 text-white' : 'border-white/15 bg-white/7 text-white/60 hover:bg-white/12 hover:text-white',

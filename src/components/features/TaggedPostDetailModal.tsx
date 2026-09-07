@@ -251,11 +251,11 @@ export default function TaggedPostDetailModal({
         >
           {/* ================= 1. PRIMARY EXPANDED POST ================= */}
           <article className="pb-4">
-            {/* Rescrut banner if reposted */}
+            {/* Re-rut banner if reposted */}
             {isReposted && (
               <div className="flex items-center gap-2 text-[12px] font-semibold text-emerald-400 mb-3 pl-1">
                 <Repeat2 size={13} />
-                <span>You rescrutted this to your world</span>
+                <span>You re-rutted this to your world</span>
               </div>
             )}
 
@@ -453,7 +453,7 @@ export default function TaggedPostDetailModal({
                 <strong className="text-white font-semibold">
                   {formatCount(post.retag_count + (isReposted ? 1 : 0))}
                 </strong>{' '}
-                <span className="text-white/45">Rescruts</span>
+                <span className="text-white/45">Re-ruts</span>
               </div>
               <div>
                 <strong className="text-white font-semibold">
@@ -495,7 +495,7 @@ export default function TaggedPostDetailModal({
                     ? 'text-emerald-400 bg-emerald-500/15 font-semibold'
                     : 'hover:text-emerald-400 hover:bg-emerald-500/10'
                 )}
-                title="Rescrut"
+                title="Re-rut"
               >
                 <Repeat2
                   size={18}

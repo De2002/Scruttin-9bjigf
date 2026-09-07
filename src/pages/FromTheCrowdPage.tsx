@@ -201,7 +201,7 @@ export default function FromTheCrowdPage() {
             </div>
             <p className="font-serif text-white/85 text-[15px] leading-[1.55] mb-3 group-hover:text-white transition-colors">{c.body}</p>
             <div className="flex items-center gap-3 text-white/25 text-[11px]">
-              <span className="flex items-center gap-1"><Mic2 size={10} />{formatCount(c.scrut_count)} scruts</span>
+              <span className="flex items-center gap-1"><Mic2 size={10} />{formatCount(c.scrut_count)} ruts</span>
               <span className="flex items-center gap-1"><Globe size={10} />{c.country_count} countries</span>
               <span className="ml-auto text-sky-400/40 text-[10px] font-medium group-hover:text-sky-300/60 transition-colors">Dive in →</span>
             </div>

@@ -66,10 +66,10 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
 
   const sheetTitle =
     isResponse
-      ? contextConversation.type === 'statement' ? 'Scrut your response' : 'Scrut your answer'
+      ? contextConversation.type === 'statement' ? 'Drop your response' : 'Drop your answer'
       : mode === 'question' ? 'Ask the crowd'
       : mode === 'statement' ? 'Make a statement'
-      : 'Say it';
+      : 'Drop a Rut';
 
   const handleAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,13 +137,13 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
       ? contextConversation?.type === 'statement' ? 'Share your stance…' : 'Give your answer…'
       : mode === 'question' ? 'What do you want to ask the world?'
       : mode === 'statement' ? 'Put something to the world…'
-      : "What's on your mind?";
+      : "What's on your mind? Drop a Rut…";
 
   const submitLabel =
-    isResponse ? 'Post Scrut'
+    isResponse ? 'Drop a Rut'
     : mode === 'question' ? 'Ask'
     : mode === 'statement' ? 'State'
-    : 'Post';
+    : 'Drop a Rut';
 
   if (!user) {
     return (

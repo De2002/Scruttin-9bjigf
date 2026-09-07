@@ -237,8 +237,8 @@ export default function OpenPage() {
       ) : scruts.length === 0 ? (
         <div className="flex flex-col items-center gap-3 text-white/30 px-8 text-center">
           <p className="text-3xl">🎙</p>
-          <p className="font-medium text-white/40 text-sm">No scruts here yet</p>
-          <p className="text-xs">Be the first — tap Scrut below</p>
+          <p className="font-medium text-white/40 text-sm">No ruts here yet</p>
+          <p className="text-xs">Be the first — tap Drop a Rut below</p>
         </div>
       ) : scrut ? (
         <div key={`${scrut.id}-${index}`} className={cn('w-full max-w-sm px-7 z-10', contentAnim)}>
@@ -329,7 +329,7 @@ export default function OpenPage() {
       {showTutorial && scruts.length > 0 && (
         <div className={cn('absolute bottom-28 left-0 right-0 flex flex-col items-center gap-1.5 z-20 pointer-events-none transition-opacity duration-700', tutorialVisible ? 'opacity-60' : 'opacity-0')}>
           <span className="text-white text-base" style={{ animation: 'tutorialBob 1.8s ease-in-out infinite' }}>↑</span>
-          <p className="text-white/55 text-[11px] tracking-widest uppercase font-medium">Swipe for next Scrut</p>
+          <p className="text-white/55 text-[11px] tracking-widest uppercase font-medium">Swipe for next Rut</p>
         </div>
       )}
 
@@ -341,7 +341,7 @@ export default function OpenPage() {
         data-no-swipe
         className="absolute bottom-24 right-5 z-30 glass border border-white/10 rounded-full px-4 h-10 text-white/50 hover:text-white/80 font-semibold text-sm transition-all duration-200 hover:border-white/20"
       >
-        Scrut
+        Drop a Rut
       </button>
 
       {/* Progress dots */}

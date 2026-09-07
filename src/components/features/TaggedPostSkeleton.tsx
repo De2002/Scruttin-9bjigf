@@ -6,12 +6,13 @@ export type TaggedSkeletonVariant = 'text' | 'image' | 'poll' | 'mixed';
 interface TaggedPostSkeletonProps {
   variant?: 'text' | 'image' | 'poll';
   hasRescrutHeader?: boolean;
+  hasRerutHeader?: boolean;
   className?: string;
 }
 
 /**
  * Individual high-fidelity shimmer skeleton card replicating TaggedPostCard anatomy:
- * - Rescrut header (optional)
+ * - Re-rut header (optional)
  * - User avatar with pulse/shimmer
  * - User display name, handle, timestamp, and Tag Along button
  * - Post text lines with realistic variable widths
@@ -21,8 +22,10 @@ interface TaggedPostSkeletonProps {
 export function TaggedPostSkeleton({
   variant = 'text',
   hasRescrutHeader = false,
+  hasRerutHeader = false,
   className,
 }: TaggedPostSkeletonProps) {
+  const showRerut = hasRerutHeader || hasRescrutHeader;
   return (
     <article
       aria-hidden="true"
@@ -31,8 +34,8 @@ export function TaggedPostSkeleton({
         className
       )}
     >
-      {/* Optional Rescrut Header */}
-      {hasRescrutHeader && (
+      {/* Optional Re-rut Header */}
+      {showRerut && (
         <div className="flex items-center gap-2 mb-2.5 pl-6 sm:pl-9">
           <Repeat2 size={13} className="text-emerald-400/40 shrink-0" />
           <div className="h-3 w-28 rounded-md bg-white/[0.07] animate-pulse" />

@@ -242,7 +242,7 @@ export default function ConversationPage() {
         {scruts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-white/30 pb-8">
             <p className="text-3xl mb-3">🎙</p>
-            <p className="font-medium mb-1 text-white/50">No scruts yet</p>
+            <p className="font-medium mb-1 text-white/50">No ruts yet</p>
             <p className="text-sm">Be the first to answer</p>
           </div>
         ) : (
@@ -290,7 +290,7 @@ export default function ConversationPage() {
         className="fixed bottom-[4.8rem] right-4 z-40 flex h-10 items-center gap-1.5 rounded-full border border-white/20 bg-white/95 px-3.5 text-xs font-semibold text-black shadow-[0_8px_22px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:bottom-6 sm:right-6"
       >
         <Plus size={13} className="stroke-[2.5]" />
-        <span>{conversation.type === 'statement' ? 'Respond' : 'Answer'}</span>
+        <span>Drop a Rut</span>
       </button>
 
       {composeOpen && (

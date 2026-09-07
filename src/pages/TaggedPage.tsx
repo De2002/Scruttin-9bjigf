@@ -745,7 +745,7 @@ export default function TaggedPage() {
                         }
                         className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full bg-emerald-400 text-black text-xs font-semibold hover:bg-emerald-300 disabled:opacity-40 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
                       >
-                        <span>Scrut</span>
+                        <span>Drop a Rut</span>
                         <Send size={11} />
                       </button>
                     </div>

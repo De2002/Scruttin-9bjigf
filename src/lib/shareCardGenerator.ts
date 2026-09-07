@@ -433,8 +433,8 @@ export async function generateConversationCard(
   const statY = footerY + 18;
 
   if (showStats) {
-    // Scruts pill
-    const scrutPill = `🎙️ ${conversation.scrut_count} Voice & Text Responses`;
+    // Ruts pill
+    const scrutPill = `🎙️ ${conversation.scrut_count} Voice & Text Ruts`;
     ctx.font = '600 12px "Inter", sans-serif';
     const pill1W = ctx.measureText(scrutPill).width + 24;
     roundRect(ctx, statX, statY, pill1W, 30, 15);

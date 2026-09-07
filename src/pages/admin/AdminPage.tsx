@@ -172,7 +172,7 @@ function OverviewTab() {
   return (
     <div className="grid grid-cols-2 gap-3">
       <StatCard label="Total Users" value={stats.users} />
-      <StatCard label="Total Scruts" value={stats.scruts} />
+      <StatCard label="Total Ruts" value={stats.scruts} />
       <StatCard label="Conversations" value={stats.conversations} />
       <StatCard label="Pending Reports" value={stats.reports} color={stats.reports > 0 ? 'text-rose-400' : 'text-white'} />
     </div>
@@ -300,7 +300,7 @@ function AdsTab() {
           <div className="flex gap-2">
             <button onClick={() => setFormat('sponsored_scrut')}
               className={cn('flex-1 py-2 rounded-xl border text-xs font-medium transition-all', format === 'sponsored_scrut' ? 'bg-white/12 border-white/25 text-white' : 'bg-white/4 border-white/8 text-white/40')}>
-              Sponsored Scrut
+              Sponsored Rut
             </button>
             <button onClick={() => setFormat('ambient')}
               className={cn('flex-1 py-2 rounded-xl border text-xs font-medium transition-all', format === 'ambient' ? 'bg-white/12 border-white/25 text-white' : 'bg-white/4 border-white/8 text-white/40')}>
@@ -328,7 +328,7 @@ function AdsTab() {
             </div>
           </div>
           <div>
-            <p className="text-white/30 text-[10px] mb-1">Min scruts between ads</p>
+            <p className="text-white/30 text-[10px] mb-1">Min ruts between ads</p>
             <input type="number" value={minScruts} onChange={e => setMinScruts(e.target.value)} min="1"
               className={cn(INPUT, 'w-24')} />
           </div>
@@ -447,7 +447,7 @@ function ReportsTab() {
   const action = async (report: Report, hide: boolean) => {
     if (hide) await supabase.from('scruts').update({ is_reported: true }).eq('id', report.scrut_id);
     await supabase.from('reports').update({ reviewed: true, actioned: hide }).eq('id', report.id);
-    toast.success(hide ? 'Scrut hidden sitewide' : 'Report dismissed');
+    toast.success(hide ? 'Rut hidden sitewide' : 'Report dismissed');
     load();
   };
 
@@ -467,7 +467,7 @@ function ReportsTab() {
             <div className="flex-1 min-w-0">
               <p className="text-rose-400/80 text-xs font-medium mb-1">{r.reason}</p>
               <p className="text-white/60 text-sm line-clamp-2 font-serif">
-                {r.scrut?.text ? `"${r.scrut.text}"` : `[${r.scrut?.type ?? 'voice'} scrut]`}
+                {r.scrut?.text ? `"${r.scrut.text}"` : `[${r.scrut?.type ?? 'voice'} rut]`}
               </p>
             </div>
             {r.actioned && <span className="shrink-0 text-[10px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full">Hidden</span>}
@@ -479,7 +479,7 @@ function ReportsTab() {
             <div className="flex gap-2">
               <button onClick={() => action(r, true)}
                 className="flex-1 py-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium hover:bg-rose-500/25 transition-colors flex items-center justify-center gap-1.5">
-                <XCircle size={12} /> Hide scrut
+                <XCircle size={12} /> Hide rut
               </button>
               <button onClick={() => action(r, false)}
                 className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 text-xs font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-1.5">

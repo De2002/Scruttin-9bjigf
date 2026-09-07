@@ -143,7 +143,7 @@ function ScrutMediaAttachment({
         {/* Media Image / GIF — natural hugging width without black horizontal letterbox wings */}
         <img
           src={url}
-          alt="Scrut attachment"
+          alt="Rut attachment"
           onLoad={() => setIsLoaded(true)}
           onError={() => setLoadError(true)}
           className={cn(
@@ -369,8 +369,8 @@ export default function ScrutCard({ scrut, showPosition, onRevealComplete, class
                 setReportOpen(true);
               }}
               className="text-white/30 hover:text-rose-400/80 p-1.5 rounded-lg transition-colors"
-              aria-label="Report scrut"
-              title="Report scrut"
+              aria-label="Report rut"
+              title="Report rut"
             >
               <Flag size={14} />
             </button>

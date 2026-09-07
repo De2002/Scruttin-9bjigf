@@ -27,7 +27,7 @@ const REASONS = [
 export default function ReportModal({
   scrutId,
   onClose,
-  title = 'Report this Scrut',
+  title = 'Report this Rut',
   subtitle = 'Why are you reporting this?',
   itemType = 'content',
 }: Props) {

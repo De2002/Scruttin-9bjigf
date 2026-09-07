@@ -130,11 +130,11 @@ export default function TaggedPostCard({
       onClick={() => onOpenThread(post)}
       className="group relative border-b border-white/[0.08] hover:bg-white/[0.035] transition-colors duration-150 px-3 py-3 sm:px-5 sm:py-4 cursor-pointer"
     >
-      {/* Rescrut context banner above post header (like X / Bluesky repost header) */}
+      {/* Re-rut context banner above post header (like X / Bluesky repost header) */}
       {isReposted && (
         <div className="flex items-center gap-2 text-[12px] font-semibold text-emerald-400/90 mb-2 pl-6 sm:pl-9 tracking-tight">
           <Repeat2 size={13} className="text-emerald-400" />
-          <span>Rescrutted by you</span>
+          <span>Re-rutted by you</span>
         </div>
       )}
 
@@ -419,7 +419,7 @@ export default function TaggedPostCard({
               </span>
             </button>
 
-            {/* 2. Rescrut (Repost / Re-tag) */}
+            {/* 2. Re-rut (Repost / Re-tag) */}
             <button
               type="button"
               onClick={handleRepostClick}
@@ -429,7 +429,7 @@ export default function TaggedPostCard({
                   ? 'text-emerald-400 font-semibold'
                   : 'hover:text-emerald-400'
               )}
-              title={isReposted ? 'Undo Rescrut' : 'Rescrut to your world'}
+              title={isReposted ? 'Undo Re-rut' : 'Re-rut to your world'}
             >
               <div className="p-1.5 rounded-full group-hover/btn:bg-emerald-500/15 transition-colors">
                 <Repeat2

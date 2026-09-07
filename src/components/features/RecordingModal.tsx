@@ -55,7 +55,7 @@ export default function RecordingModal({ onRecorded, onCancel }: Props) {
       mr.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         if (blob.size > MAX_FILE_SIZE) {
-          setError('Voice Scruts must be 5 MB or smaller. Please record a shorter take.');
+          setError('Voice Ruts must be 5 MB or smaller. Please record a shorter take.');
           setState('idle');
           stopTracks();
           return;
@@ -93,7 +93,7 @@ export default function RecordingModal({ onRecorded, onCancel }: Props) {
   const upload = async () => {
     if (!blobRef.current || !user) return;
     if (blobRef.current.size > MAX_FILE_SIZE || audioDuration > MAX_DURATION) {
-      setError('Voice Scruts must be no longer than 3 minutes and 5 MB.');
+      setError('Voice Ruts must be no longer than 3 minutes and 5 MB.');
       return;
     }
 

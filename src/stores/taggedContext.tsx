@@ -455,11 +455,11 @@ export function TaggedProvider({ children }: { children: ReactNode }) {
     setRepostedIds((prev) => {
       if (prev.includes(postId)) {
         nowReposted = false;
-        toast.info('Removed Rescrut');
+        toast.info('Removed Re-rut');
         return prev.filter((id) => id !== postId);
       } else {
         nowReposted = true;
-        toast.success('Rescrutted to your world!');
+        toast.success('Re-rutted to your world!');
         return [...prev, postId];
       }
     });

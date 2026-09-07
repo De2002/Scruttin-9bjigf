@@ -439,7 +439,7 @@ export default function StreamPage() {
       >
         {current?.isHeader
           ? (current.conversation.type === 'statement' ? 'State' : 'Ask')
-          : 'Scrut'}
+          : 'Drop a Rut'}
       </button>
 
       {composeOpen && (
@@ -493,7 +493,7 @@ function ConversationCard({
         <div className="mb-5"><StatementVote /></div>
       )}
       <div className="flex items-center gap-4 text-white/28 text-[11px] mb-5">
-        <span className="flex items-center gap-1"><Mic2 size={10} />{formatCount(conversation.scrut_count)} scruts</span>
+        <span className="flex items-center gap-1"><Mic2 size={10} />{formatCount(conversation.scrut_count)} ruts</span>
         <span className="flex items-center gap-1"><Globe size={10} />{conversation.country_count} countries</span>
         <span className={cn('ml-auto font-medium', topicColor[conversation.topic] ?? 'text-white/30')}>
           {conversation.topic}

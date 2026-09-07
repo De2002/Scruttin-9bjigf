@@ -322,12 +322,12 @@ export default function ScrutDetailSheet({ scrut, user: propUser, onClose }: Pro
               </span>
             </div>
 
-            {/* Scrut attachment & timestamp if triggered from specific scrut */}
+            {/* Rut attachment & timestamp if triggered from specific scrut */}
             {scrut?.attachment_url && (
               <div className="mb-3 relative rounded-2xl overflow-hidden border border-white/15 bg-black/40 shadow-lg">
                 <img
                   src={scrut.attachment_url}
-                  alt="Scrut attachment"
+                  alt="Rut attachment"
                   className="w-full max-h-48 object-cover sm:object-contain bg-black/50"
                 />
                 {(scrut.attachment_url.toLowerCase().includes('.gif') || scrut.attachment_url.toLowerCase().includes('giphy')) && (
@@ -340,7 +340,7 @@ export default function ScrutDetailSheet({ scrut, user: propUser, onClose }: Pro
 
             {scrut && (
               <p className="text-white/25 text-[11px] tracking-wide mb-5 uppercase font-medium">
-                Scrut from {timeAgo(scrut.created_at)}
+                Rut from {timeAgo(scrut.created_at)}
               </p>
             )}
 
