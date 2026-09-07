@@ -501,19 +501,20 @@ export default function TaggedPage() {
         {/* Search Bar */}
         <div className="mb-3">
           <div className="relative flex items-center">
-            <Search size={14} className="absolute left-3 text-white/30 pointer-events-none" />
+            <Search size={14} className="absolute left-3.5 text-white/35 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search reflections, tags, polls..."
-              className="w-full pl-8.5 pr-8 py-2 rounded-xl bg-white/[0.05] border border-white/8 text-xs text-white placeholder-white/35 focus:outline-none focus:border-emerald-500/40 focus:bg-white/[0.08] transition-all"
+              className="w-full pl-9 sm:pl-10 pr-9 py-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-xs sm:text-sm text-white placeholder-white/35 focus:outline-none focus:border-emerald-500/40 focus:bg-white/[0.08] transition-all"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 p-1 text-white/40 hover:text-white"
+                className="absolute right-2.5 p-1 text-white/40 hover:text-white transition-colors"
+                aria-label="Clear search"
               >
                 <X size={13} />
               </button>

@@ -15,6 +15,7 @@ import type { User } from '@/types';
 import UserAvatar from '@/components/features/UserAvatar';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getMapUrl } from '@/lib/countryMap';
 
 interface TaggedUsersSheetProps {
   open: boolean;
@@ -217,9 +218,17 @@ export default function TaggedUsersSheet({
                             {user.display_name}
                           </span>
                           {user.country && (
-                            <span className="text-[10px] text-white/40 flex items-center gap-0.5">
-                              <MapPin size={9} className="text-emerald-400/80" />
-                              {user.city ? `${user.city}, ` : ''}{user.country}
+                            <span className="text-[10px] text-white/50 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                              {getMapUrl(user.country) ? (
+                                <img
+                                  src={getMapUrl(user.country)!}
+                                  alt={user.country}
+                                  className="w-3 h-3 object-contain invert opacity-85"
+                                />
+                              ) : (
+                                <MapPin size={9} className="text-emerald-400/80" />
+                              )}
+                              <span>{user.city ? `${user.city}, ` : ''}{user.country}</span>
                             </span>
                           )}
                         </div>
@@ -294,9 +303,17 @@ export default function TaggedUsersSheet({
                               {user.display_name}
                             </span>
                             {user.country && (
-                              <span className="text-[10px] text-white/40 flex items-center gap-0.5">
-                                <MapPin size={9} className="text-emerald-400/80" />
-                                {user.city ? `${user.city}, ` : ''}{user.country}
+                              <span className="text-[10px] text-white/50 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                                {getMapUrl(user.country) ? (
+                                  <img
+                                    src={getMapUrl(user.country)!}
+                                    alt={user.country}
+                                    className="w-3 h-3 object-contain invert opacity-85"
+                                  />
+                                ) : (
+                                  <MapPin size={9} className="text-emerald-400/80" />
+                                )}
+                                <span>{user.city ? `${user.city}, ` : ''}{user.country}</span>
                               </span>
                             )}
                           </div>

@@ -2,6 +2,7 @@
  * ComposeModal — contextual composer with live topics from DB + GIF/sticker attachment.
  */
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Mic2, Type, ArrowRight, Loader2, RotateCcw, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -204,25 +205,40 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
     : 'Drop a Rut';
 
   if (!user) {
-    return (
-      <div className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center">
-        <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
-        <div className="relative glass rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-6 pb-10 sm:pb-6 text-center">
-          <div className="text-3xl mb-4">🎙</div>
-          <h3 className="text-white font-semibold mb-2">Sign in to post</h3>
-          <p className="text-white/40 text-sm mb-5">Join Scruttin to give your take and ask questions.</p>
-          <button onClick={() => { onClose(); window.location.href = '/auth'; }}
-            className="w-full py-3 rounded-2xl bg-white text-black font-semibold text-sm">Sign in</button>
+    return createPortal(
+      <div className="fixed inset-0 z-[500] flex items-center justify-center p-4" data-no-swipe data-sheet-overlay>
+        <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative glass rounded-3xl w-full max-w-sm p-6 sm:p-7 text-center shadow-2xl border border-white/15">
+          <div className="text-4xl mb-3">🎙</div>
+          <h3 className="text-white font-semibold text-lg mb-2">Sign in to post</h3>
+          <p className="text-white/50 text-sm mb-6 leading-relaxed">Join Scruttin to give your take and ask questions.</p>
+          <div className="space-y-2.5">
+            <button
+              type="button"
+              onClick={() => { onClose(); window.location.href = '/auth'; }}
+              className="w-full py-3 rounded-2xl bg-white text-black font-semibold text-sm hover:bg-white/90 active:scale-[0.98] transition-all shadow-md"
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2.5 rounded-2xl text-white/50 hover:text-white text-xs font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
   if (submitted) {
-    return (
-      <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+    return createPortal(
+      <div className="fixed inset-0 z-[500] flex items-center justify-center p-4" data-no-swipe data-sheet-overlay>
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-        <div className="relative glass rounded-3xl p-8 text-center max-w-xs w-full">
+        <div className="relative glass rounded-3xl p-8 text-center max-w-xs w-full shadow-2xl border border-white/15">
           <div className="text-4xl mb-4">{isResponse ? '💬' : mode === 'question' ? '🎙' : mode === 'statement' ? '📣' : '💬'}</div>
           <h3 className="text-white font-semibold text-lg mb-2">
             {isResponse ? 'Your take is out there.'
@@ -236,14 +252,15 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
             </p>
           )}
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
+  return createPortal(
     <>
-      {/* z-[400] — above BottomNav (z-10) and content, below report modal (z-[500]) */}
-      <div className="fixed inset-0 z-[400] flex items-end sm:items-center justify-center p-0 sm:p-4" data-no-swipe data-sheet-overlay>
+      {/* z-[500] — above BottomNav and page content, below report modal (z-[600]) */}
+      <div className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4" data-no-swipe data-sheet-overlay>
         <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
         <div
           className="relative glass max-h-[calc(100dvh-0.5rem)] w-full overflow-y-auto overscroll-contain rounded-t-3xl sm:max-w-md sm:rounded-3xl"
@@ -545,6 +562,7 @@ export default function ComposeModal({ onClose, defaultMode = 'question', contex
           onClose={() => setShowImagePicker(false)}
         />
       )}
-    </>
+    </>,
+    document.body
   );
 }

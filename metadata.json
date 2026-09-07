@@ -1,6 +1,6 @@
 {
   "name": "Scruttin",
-  "description": "A text-and-voice social platform. Ask questions, make statements, read thoughts, hear voices, and Scrut what you have to say.",
+  "description": "Global street interviews through voice and text ruts. One question, multiple ruts from strangers around the world. Tag along to unlock the Tagged Feed at 100 taggers, customize your atmosphere with rain, snow, thunder or your own photos, discover country maps, and experience each rut once in a lifetime.",
   "requestFramePermissions": [
     "microphone"
   ],

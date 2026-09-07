@@ -271,12 +271,6 @@ export default function TaggedPostDetailModal({
                     <span className="font-bold text-white text-[16px] leading-tight group-hover/author:underline truncate">
                       {post.user.display_name}
                     </span>
-                    {isTagged && !isAuthor && (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                        <UserCheck size={9} />
-                        <span>Tagged</span>
-                      </span>
-                    )}
                   </div>
                   <p className="text-[13px] text-white/45 font-normal">@{userHandle}</p>
                 </div>

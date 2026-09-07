@@ -9,6 +9,7 @@ import ReportModal from './ReportModal';
 import MediaLightboxModal from './MediaLightboxModal';
 import { Flag, UserRound, Maximize2, ChevronUp, ChevronDown, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { COUNTRY_ISO, getMapUrl } from '@/lib/countryMap';
 
 interface Props {
   scrut: Scrut;
@@ -26,28 +27,6 @@ const positionLabel: Record<string, string> = {
 const positionColor: Record<string, string> = {
   agree: 'text-emerald-400', unsure: 'text-amber-400', disagree: 'text-rose-400',
 };
-
-const COUNTRY_ISO: Record<string, string> = {
-  Nigeria: 'ng', Brazil: 'br', UK: 'gb', 'United Kingdom': 'gb', Ghana: 'gh', Japan: 'jp',
-  Italy: 'it', India: 'in', Mexico: 'mx', Morocco: 'ma', Germany: 'de', USA: 'us',
-  'United States': 'us', China: 'cn', France: 'fr', Spain: 'es', Canada: 'ca',
-  Australia: 'au', Argentina: 'ar', 'South Africa': 'za', Kenya: 'ke', Egypt: 'eg',
-  Turkey: 'tr', Indonesia: 'id', Pakistan: 'pk', Bangladesh: 'bd', Philippines: 'ph',
-  Vietnam: 'vn', Iran: 'ir', Thailand: 'th', Ethiopia: 'et', Tanzania: 'tz',
-  Colombia: 'co', Chile: 'cl', Peru: 'pe', Venezuela: 've', Ecuador: 'ec', Bolivia: 'bo',
-  Sweden: 'se', Norway: 'no', Denmark: 'dk', Finland: 'fi', Netherlands: 'nl',
-  Belgium: 'be', Switzerland: 'ch', Austria: 'at', Poland: 'pl', Portugal: 'pt',
-  Greece: 'gr', Ukraine: 'ua', Russia: 'ru', 'South Korea': 'kr', 'Saudi Arabia': 'sa',
-  Iraq: 'iq', Syria: 'sy', Jordan: 'jo', Lebanon: 'lb', Israel: 'il', UAE: 'ae',
-  'United Arab Emirates': 'ae', Qatar: 'qa', Kuwait: 'kw', Oman: 'om', Yemen: 'ye',
-  Uganda: 'ug', Rwanda: 'rw', 'Ivory Coast': 'ci', Senegal: 'sn', Cameroon: 'cm',
-};
-
-function getMapUrl(country: string | undefined): string | null {
-  if (!country) return null;
-  const iso = COUNTRY_ISO[country];
-  return iso ? `https://raw.githubusercontent.com/djaiss/mapsicon/master/all/${iso}/256.png` : null;
-}
 
 function wordCount(text: string | null | undefined): number {
   if (!text) return 0;

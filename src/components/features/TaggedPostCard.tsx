@@ -171,17 +171,6 @@ export default function TaggedPostCard({
                 {post.user.display_name}
               </button>
 
-              {/* Tagged Badge Indicator */}
-              {isTagged && !isAuthor && (
-                <span
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0"
-                  title="In your Tagged circle"
-                >
-                  <UserCheck size={9} />
-                  <span>Tagged</span>
-                </span>
-              )}
-
               {/* Handle */}
               <span
                 onClick={(e) => {

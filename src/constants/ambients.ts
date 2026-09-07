@@ -63,6 +63,26 @@ export const AMBIENT_CONFIGS: AmbientConfig[] = [
     accentColor: '#a5b4fc',
   },
   {
+    id: 'snow',
+    label: 'Snow',
+    emoji: '❄️',
+    // Pexels — gentle snowfall in winter landscape
+    videoUrl: 'https://videos.pexels.com/video-files/856973/856973-hd_1920_1080_25fps.mp4',
+    overlayOpacity: 0.65,
+    overlayColor: '18, 24, 38',
+    accentColor: '#93c5fd',
+  },
+  {
+    id: 'thunder',
+    label: 'Thunder',
+    emoji: '⛈️',
+    // Pexels — dramatic thunderstorm lightning flash over night sky
+    videoUrl: 'https://videos.pexels.com/video-files/3888252/3888252-hd_1920_1080_30fps.mp4',
+    overlayOpacity: 0.72,
+    overlayColor: '12, 10, 24',
+    accentColor: '#c084fc',
+  },
+  {
     id: 'night',
     label: 'Night',
     emoji: '🌙',
@@ -110,6 +130,52 @@ export const AMBIENT_CONFIGS: AmbientConfig[] = [
     overlayOpacity: 0,
     overlayColor: '12, 12, 16',
     accentColor: '#d1d5db',
+  },
+];
+
+export interface StockWallpaper {
+  id: string;
+  label: string;
+  url: string;
+  thumbnail: string;
+}
+
+export const STOCK_WALLPAPERS: StockWallpaper[] = [
+  {
+    id: 'stock-rain-window',
+    label: 'Rain Glass',
+    url: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=1600&auto=format&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=200&auto=format&fit=crop',
+  },
+  {
+    id: 'stock-city-night',
+    label: 'Street Lights',
+    url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1600&auto=format&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=200&auto=format&fit=crop',
+  },
+  {
+    id: 'stock-cozy-cafe',
+    label: 'Warm Cafe',
+    url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1600&auto=format&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=200&auto=format&fit=crop',
+  },
+  {
+    id: 'stock-snow-trees',
+    label: 'Winter Pines',
+    url: 'https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=1600&auto=format&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?w=200&auto=format&fit=crop',
+  },
+  {
+    id: 'stock-ocean-calm',
+    label: 'Twilight Ocean',
+    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&auto=format&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=200&auto=format&fit=crop',
+  },
+  {
+    id: 'stock-deep-forest',
+    label: 'Misty Forest',
+    url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1600&auto=format&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=200&auto=format&fit=crop',
   },
 ];
 

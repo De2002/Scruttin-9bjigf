@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db, googleProvider, signInWithPopup, firebaseSignOut, testConnection, handleFirestoreError, OperationType } from '@/lib/firebase';
+import { auth, db, googleProvider, signInWithPopup, firebaseSignOut, handleFirestoreError, OperationType } from '@/lib/firebase';
 
 export interface AuthUser {
   id: string;
@@ -61,11 +61,6 @@ function mapFirebaseUser(firebaseUser: FirebaseUser, profileData?: Record<string
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Test Firestore connectivity on initial boot
-  useEffect(() => {
-    testConnection();
-  }, []);
 
   const fetchProfile = useCallback(async (firebaseUser: FirebaseUser): Promise<AuthUser> => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);

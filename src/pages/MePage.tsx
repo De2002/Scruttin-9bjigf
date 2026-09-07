@@ -12,6 +12,8 @@ import {
   Layers,
   ChevronRight,
   ExternalLink,
+  MapPin,
+  Globe,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +23,7 @@ import UserContributionsSheet from '@/components/features/UserContributionsSheet
 import ComposeModal from '@/components/features/ComposeModal';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getMapUrl, COMMON_COUNTRIES } from '@/lib/countryMap';
 
 type Tab = 'scruts' | 'yours' | 'account';
 
@@ -63,6 +66,7 @@ export default function MePage() {
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editCity, setEditCity] = useState('');
+  const [editCountry, setEditCountry] = useState('');
   const [editWebsite, setEditWebsite] = useState('');
   const [editTwitter, setEditTwitter] = useState('');
   const [editInstagram, setEditInstagram] = useState('');
@@ -91,6 +95,7 @@ export default function MePage() {
     setEditName(user.display_name ?? '');
     setEditBio(user.bio ?? '');
     setEditCity(user.city ?? '');
+    setEditCountry(user.country ?? '');
     setEditWebsite(user.website ?? '');
     setEditTwitter(user.twitter ?? '');
     setEditInstagram(user.instagram ?? '');
@@ -142,6 +147,7 @@ export default function MePage() {
         display_name: editName.trim(),
         bio: editBio.trim() || undefined,
         city: editCity.trim() || undefined,
+        country: editCountry.trim() || undefined,
         website: editWebsite.trim() || undefined,
         twitter: editTwitter.trim().replace('@', '') || undefined,
         instagram: editInstagram.trim().replace('@', '') || undefined,
@@ -230,33 +236,92 @@ export default function MePage() {
 
             <div className="flex-1 min-w-0 pt-0.5">
               {editing ? (
-                <input
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  className={cn(INPUT_CLS, 'mb-1')}
-                  placeholder="Display name"
-                />
-              ) : (
-                <h2 className="text-white font-bold text-[18px] leading-tight">{user.display_name}</h2>
-              )}
-              <div className="flex items-center gap-1 mt-1">
-                {editing ? (
+                <div className="space-y-1.5 mb-1.5">
                   <input
-                    value={editCity}
-                    onChange={e => setEditCity(e.target.value)}
-                    placeholder={user.country ?? 'City'}
-                    className={cn(INPUT_CLS, 'text-xs py-1.5')}
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className={cn(INPUT_CLS, 'mb-1')}
+                    placeholder="Display name"
                   />
-                ) : (
-                  <span className="text-white/40 text-xs">
-                    {user.city ? `${user.city}, ${user.country}` : (user.country ?? 'No location set')}
-                  </span>
-                )}
-              </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={editCity}
+                      onChange={e => setEditCity(e.target.value)}
+                      placeholder="City (e.g. Lagos, London)"
+                      className={cn(INPUT_CLS, 'flex-1 text-xs py-1.5')}
+                    />
+                    <div className="flex-1 relative">
+                      <input
+                        value={editCountry}
+                        onChange={e => setEditCountry(e.target.value)}
+                        placeholder="Country (for map silhouette)"
+                        list="me-common-countries"
+                        className={cn(INPUT_CLS, 'text-xs py-1.5')}
+                      />
+                      <datalist id="me-common-countries">
+                        {COMMON_COUNTRIES.map(c => (
+                          <option key={c} value={c} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-white/30">
+                    Setting your country unlocks your country map silhouette on your profile.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-white font-bold text-[18px] leading-tight">{user.display_name}</h2>
+                    {user.country && getMapUrl(user.country) && (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-[11px] text-white/80 font-medium"
+                        title={`${user.country} country map silhouette`}
+                      >
+                        <img
+                          src={getMapUrl(user.country)!}
+                          alt={user.country}
+                          className="w-3.5 h-3.5 object-contain invert opacity-90"
+                        />
+                        <span>{user.country}</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 text-white/40 text-xs">
+                    <MapPin size={11} className="shrink-0 text-white/30" />
+                    <span>
+                      {user.city ? `${user.city}, ${user.country || 'Global'}` : (user.country || 'No country set')}
+                    </span>
+                    {!user.country && (
+                      <button
+                        type="button"
+                        onClick={() => setEditing(true)}
+                        className="text-amber-300/80 hover:text-amber-300 text-[11px] underline ml-1"
+                      >
+                        + Set country for map
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
 
-              {/* Tipping Coffee Badge or Add Prompt */}
+              {/* Tipping Coffee Badge and Website Link */}
               {!editing && (
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                  {user.website && (
+                    <a
+                      href={ensureHttps(user.website)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/35 transition-all shadow-sm active:scale-95 group"
+                      title="Visit your blog / website"
+                    >
+                      <Globe size={11} className="text-sky-400 group-hover:scale-110 transition-transform" />
+                      <span className="truncate max-w-[140px]">{user.website.replace(/^https?:\/\//, '')}</span>
+                      <ExternalLink size={10} className="text-sky-400/60" />
+                    </a>
+                  )}
+
                   {editTipLink ? (
                     <a
                       href={ensureHttps(editTipLink)}
@@ -448,7 +513,66 @@ export default function MePage() {
         {activeTab === 'yours' && <MakeScruttinYours />}
 
         {activeTab === 'account' && (
-          <div className="space-y-5">
+          <div className="space-y-4">
+            {/* Country Map Silhouette card */}
+            <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <MapPin size={15} className="text-emerald-400" />
+                  <h3 className="text-white font-semibold text-sm">Country Map Silhouette</h3>
+                </div>
+                {user.country && (
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                    {user.country}
+                  </span>
+                )}
+              </div>
+
+              {user.country && getMapUrl(user.country) ? (
+                <div className="flex items-center gap-4 p-3 rounded-xl bg-black/20 border border-white/5">
+                  <div className="w-14 h-14 rounded-lg bg-white/5 flex items-center justify-center shrink-0 p-1">
+                    <img
+                      src={getMapUrl(user.country)!}
+                      alt={user.country}
+                      className="w-12 h-12 object-contain invert opacity-90"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white text-xs font-semibold">{user.country} map</p>
+                    <p className="text-white/40 text-[11px] mt-0.5 leading-relaxed">
+                      This authentic map silhouette is displayed when strangers explore your profile after listening to your ruts.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-left space-y-2">
+                  <p className="text-white/50 text-xs leading-relaxed">
+                    Set your country on your profile so strangers worldwide can discover your country map silhouette when hearing your ruts.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {COMMON_COUNTRIES.slice(0, 8).map(country => (
+                      <button
+                        key={country}
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await updateProfile({ country });
+                            await refreshUser();
+                            toast.success(`Country set to ${country}`);
+                          } catch {
+                            toast.error('Failed to set country');
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-full text-[11px] bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-colors"
+                      >
+                        {country}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <div className="px-4 py-3 rounded-xl bg-white/4 border border-white/6">
                 <p className="text-white/40 text-xs mb-0.5">Signed in as</p>

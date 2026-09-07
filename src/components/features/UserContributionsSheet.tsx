@@ -16,12 +16,23 @@ import {
   HelpCircle,
   Plus,
   Loader2,
+  Coffee,
 } from 'lucide-react';
 import { cn, timeAgo, formatCount } from '@/lib/utils';
 import type { User, ConversationStarter, Scrut, StatementPosition } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { MOCK_CONVERSATIONS, MOCK_SCRUTS } from '@/constants/mockData';
 import { useAuth } from '@/contexts/AuthContext';
+import { getMapUrl } from '@/lib/countryMap';
+
+function getTipLabel(url?: string | null): string {
+  if (!url) return 'Buy a coffee';
+  const l = url.toLowerCase();
+  if (l.includes('buymeacoffee.com') || l.includes('bmc.link')) return 'Buy Me a Coffee';
+  if (l.includes('ko-fi.com')) return 'Ko-fi';
+  if (l.includes('paypal.me') || l.includes('paypal.com')) return 'PayPal';
+  return 'Tip & Support';
+}
 
 export type ContributionTab = 'questions' | 'claims' | 'responses';
 
@@ -432,16 +443,59 @@ export default function UserContributionsSheet({
                 )}
               </div>
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <h2 className="text-white font-bold text-base leading-tight truncate">
                     {isCurrentUser ? 'My Contributions' : `${user.display_name}'s Archive`}
                   </h2>
+                  {user.country && getMapUrl(user.country) && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/10 border border-white/15 text-[10px] text-white/80 font-medium" title={`${user.country} map silhouette`}>
+                      <img
+                        src={getMapUrl(user.country)!}
+                        alt={user.country}
+                        className="w-3.5 h-3.5 object-contain invert opacity-90"
+                      />
+                      <span className="truncate max-w-[80px]">{user.country}</span>
+                    </span>
+                  )}
                 </div>
-                <p className="text-white/40 text-xs truncate">
-                  @{user.twitter || user.display_name.toLowerCase().replace(/\s+/g, '')} ·{' '}
-                  {user.country || 'Global'}
-                </p>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <p className="text-white/40 text-xs truncate">
+                    @{user.twitter || user.display_name.toLowerCase().replace(/\s+/g, '')}
+                    {!getMapUrl(user.country) && ` · ${user.country || 'Global'}`}
+                  </p>
+
+                  {user.website && (
+                    <a
+                      href={user.website.startsWith('http') ? user.website : `https://${user.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/25 text-sky-300 text-[10px] font-medium hover:bg-sky-500/25 transition-colors"
+                      title="Visit website / blog"
+                    >
+                      <Globe size={10} />
+                      <span className="truncate max-w-[110px]">{user.website.replace(/^https?:\/\//, '')}</span>
+                      <ExternalLink size={8} />
+                    </a>
+                  )}
+
+                  {(user.tip_link || (typeof window !== 'undefined' && localStorage.getItem(`scruttin_tip_${user.id}`))) && (
+                    <a
+                      href={(() => {
+                        const tip = user.tip_link || (typeof window !== 'undefined' ? localStorage.getItem(`scruttin_tip_${user.id}`) : '');
+                        return tip?.startsWith('http') ? tip : `https://${tip}`;
+                      })()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-300 text-[10px] font-semibold hover:bg-amber-500/25 transition-colors"
+                      title="Send a tip"
+                    >
+                      <Coffee size={10} className="text-amber-400" />
+                      <span>{getTipLabel(user.tip_link || (typeof window !== 'undefined' ? localStorage.getItem(`scruttin_tip_${user.id}`) : ''))}</span>
+                      <ExternalLink size={8} />
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
