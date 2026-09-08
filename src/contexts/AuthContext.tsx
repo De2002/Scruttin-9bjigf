@@ -1,7 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db, googleProvider, signInWithPopup, firebaseSignOut, handleFirestoreError, OperationType } from '@/lib/firebase';
+import {
+  auth,
+  authPersistence,
+  db,
+  googleProvider,
+  signInWithPopup,
+  firebaseSignOut,
+  handleFirestoreError,
+  OperationType,
+} from '@/lib/firebase';
 
 export interface AuthUser {
   id: string;
@@ -102,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     try {
+      await authPersistence;
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
         const authUser = await fetchProfile(result.user);

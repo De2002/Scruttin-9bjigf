@@ -12,7 +12,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Pin, Shield } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStream } from '@/stores/streamContext';
 import AtmosphereControls from '@/components/layout/AtmosphereControls';
@@ -41,8 +40,7 @@ export default function MeTopBar() {
   }, [pinsOpen, pinned]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    logout();
+    await logout();
     navigate('/', { replace: true });
   };
 
