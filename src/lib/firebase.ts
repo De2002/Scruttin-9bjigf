@@ -19,13 +19,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = initializeFirestore(
-  app,
-  {
-    experimentalForceLongPolling: true,
-  },
-  firebaseConfig.firestoreDatabaseId
-);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const authPersistence = setPersistence(auth, browserLocalPersistence);
